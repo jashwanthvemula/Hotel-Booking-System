@@ -102,6 +102,54 @@ def setup_database():
                 FOREIGN KEY (Generated_By) REFERENCES Admin(Admin_ID) ON DELETE SET NULL
             )
         """)
+        # Add these tables to the setup_database function in main.py after the Report table
+
+# Create Hotel table
+        cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Hotel (
+        Hotel_ID INT AUTO_INCREMENT PRIMARY KEY,
+        hotel_name VARCHAR(100) NOT NULL,
+        location VARCHAR(100) NOT NULL,
+        description TEXT,
+        star_rating INT NOT NULL CHECK (star_rating BETWEEN 1 AND 5),
+        image_path VARCHAR(255),
+        created_by INT,
+        FOREIGN KEY (created_by) REFERENCES Admin(Admin_ID) ON DELETE SET NULL
+    )
+""")
+
+# Create RoomCategory table
+        cursor.execute("""
+    CREATE TABLE IF NOT EXISTS RoomCategory (
+        Category_ID INT AUTO_INCREMENT PRIMARY KEY,
+        Hotel_ID INT NOT NULL,
+        category_name VARCHAR(50) NOT NULL,
+        description TEXT,
+        base_price DECIMAL(10, 2) NOT NULL,
+        capacity INT NOT NULL,
+        FOREIGN KEY (Hotel_ID) REFERENCES Hotel(Hotel_ID) ON DELETE CASCADE
+    )
+""")
+
+# Create Amenities table
+        cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Amenities (
+        Amenity_ID INT AUTO_INCREMENT PRIMARY KEY,
+        amenity_name VARCHAR(50) NOT NULL,
+        amenity_icon VARCHAR(20)
+    )
+""")
+
+# Create Hotel_Amenities junction table
+        cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Hotel_Amenities (
+        Hotel_ID INT NOT NULL,
+        Amenity_ID INT NOT NULL,
+        PRIMARY KEY (Hotel_ID, Amenity_ID),
+        FOREIGN KEY (Hotel_ID) REFERENCES Hotel(Hotel_ID) ON DELETE CASCADE,
+        FOREIGN KEY (Amenity_ID) REFERENCES Amenities(Amenity_ID) ON DELETE CASCADE
+    )
+""")
         
         # Commit the changes
         connection.commit()
@@ -131,6 +179,129 @@ def connect_db():
 def hash_password(password):
     """Hash a password using SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
+
+# Add this function to main.py and call it after add_sample_data()
+
+def add_sample_hotels():
+    """Add sample hotels if Hotel table is empty"""
+    try:
+        connection = connect_db()
+        cursor = connection.cursor()
+        
+        # Check if Hotel table is empty
+        cursor.execute("SELECT COUNT(*) FROM Hotel")
+        hotel_count = cursor.fetchone()[0]
+        
+        if hotel_count == 0:
+            # Add sample hotels
+            hotels = [
+                ("Luxury Grand Hotel", "New York, USA", 
+                 "Experience luxury in the heart of New York City. Our 5-star hotel offers premium amenities, exceptional service, and stunning views of the city skyline.", 
+                 5),
+                ("Ocean View Resort", "Miami, USA", 
+                 "Relax and unwind at our beautiful beachfront resort. Enjoy direct beach access, multiple pools, and world-class dining options.", 
+                 4),
+                ("Mountain Retreat Lodge", "Aspen, USA", 
+                 "Escape to the mountains at our cozy lodge. Perfect for both winter skiing and summer hiking adventures with breathtaking views.", 
+                 4),
+                ("City Center Hotel", "Chicago, USA", 
+                 "Conveniently located in downtown Chicago, our modern hotel is perfect for business and leisure travelers alike.", 
+                 3),
+                ("Beachfront Villa", "Malibu, USA", 
+                 "Experience the ultimate beach getaway in our exclusive villas with private access to pristine beaches.", 
+                 5)
+            ]
+            
+            for hotel in hotels:
+                cursor.execute(
+                    """
+                    INSERT INTO Hotel (hotel_name, location, description, star_rating, created_by)
+                    VALUES (%s, %s, %s, %s, 1)
+                    """,
+                    hotel
+                )
+                
+                # Get the new hotel ID
+                hotel_id = cursor.lastrowid
+                
+                # Add room categories for this hotel
+                if hotel[0] == "Luxury Grand Hotel":
+                    room_categories = [
+                        (hotel_id, "Standard Room", "Comfortable room with city view", 150.00, 2),
+                        (hotel_id, "Deluxe Room", "Spacious room with premium amenities", 250.00, 2),
+                        (hotel_id, "Executive Suite", "Luxury suite with separate living area", 350.00, 4)
+                    ]
+                elif hotel[0] == "Ocean View Resort":
+                    room_categories = [
+                        (hotel_id, "Garden View Room", "Peaceful room with garden views", 180.00, 2),
+                        (hotel_id, "Ocean View Room", "Beautiful room with ocean views", 250.00, 2),
+                        (hotel_id, "Beach Suite", "Spacious suite steps from the beach", 380.00, 4)
+                    ]
+                elif hotel[0] == "Mountain Retreat Lodge":
+                    room_categories = [
+                        (hotel_id, "Standard Cabin", "Cozy cabin with mountain views", 120.00, 2),
+                        (hotel_id, "Deluxe Cabin", "Larger cabin with fireplace", 200.00, 4),
+                        (hotel_id, "Family Lodge", "Large lodge for families or groups", 320.00, 6)
+                    ]
+                elif hotel[0] == "City Center Hotel":
+                    room_categories = [
+                        (hotel_id, "Economy Room", "Compact room for the budget traveler", 90.00, 1),
+                        (hotel_id, "Business Room", "Comfortable room with work desk", 150.00, 2),
+                        (hotel_id, "Business Suite", "Suite with separate work area", 240.00, 2)
+                    ]
+                else:  # Beachfront Villa
+                    room_categories = [
+                        (hotel_id, "Standard Villa", "Beautiful villa with partial ocean view", 400.00, 4),
+                        (hotel_id, "Premium Villa", "Luxurious villa with full ocean view", 600.00, 4),
+                        (hotel_id, "Family Villa", "Expansive villa for large groups", 800.00, 8)
+                    ]
+                
+                cursor.executemany(
+                    """
+                    INSERT INTO RoomCategory (Hotel_ID, category_name, description, base_price, capacity)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    room_categories
+                )
+                
+                # Add some amenities for each hotel
+                # First, get amenity IDs
+                cursor.execute("SELECT Amenity_ID FROM Amenities")
+                amenity_ids = [row[0] for row in cursor.fetchall()]
+                
+                # Assign different sets of amenities to each hotel
+                if hotel[0] == "Luxury Grand Hotel":
+                    hotel_amenities = amenity_ids[:7]  # First 7 amenities
+                elif hotel[0] == "Ocean View Resort":
+                    hotel_amenities = amenity_ids[2:9]  # Amenities 3-9
+                elif hotel[0] == "Mountain Retreat Lodge":
+                    hotel_amenities = amenity_ids[4:11]  # Amenities 5-11
+                elif hotel[0] == "City Center Hotel":
+                    hotel_amenities = amenity_ids[0:5]  # First 5 amenities
+                else:  # Beachfront Villa
+                    hotel_amenities = amenity_ids[-6:]  # Last 6 amenities
+                
+                # Insert hotel-amenity relationships
+                for amenity_id in hotel_amenities:
+                    cursor.execute(
+                        "INSERT INTO Hotel_Amenities (Hotel_ID, Amenity_ID) VALUES (%s, %s)",
+                        (hotel_id, amenity_id)
+                    )
+            
+            connection.commit()
+            print("Sample hotels added successfully")
+            return True
+            
+    except mysql.connector.Error as err:
+        print(f"Error adding sample hotels: {err}")
+        return False
+    finally:
+        if 'connection' in locals() and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+# Then in the main() function, add this after add_sample_data():
+add_sample_hotels()
 
 def add_sample_data():
     """Add sample admin, rooms, and users if tables are empty"""

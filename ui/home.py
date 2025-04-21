@@ -203,6 +203,121 @@ def load_popular_hotels():
             connection.close()
     
     return hotels
+
+# Replace the existing load_popular_hotels function in home.py with this updated version
+
+def load_popular_hotels():
+    """Load popular hotels from the database"""
+    hotels = []
+    try:
+        connection = connect_db()
+        cursor = connection.cursor(dictionary=True)
+        
+        # Query to get popular hotels with their details
+        cursor.execute(
+            """
+            SELECT h.Hotel_ID, h.hotel_name, h.location, 
+                   h.description, h.star_rating, h.image_path,
+                   MIN(rc.base_price) as min_price
+            FROM Hotel h
+            LEFT JOIN RoomCategory rc ON h.Hotel_ID = rc.Hotel_ID
+            GROUP BY h.Hotel_ID
+            ORDER BY h.star_rating DESC, min_price
+            LIMIT 3
+            """
+        )
+        hotels_data = cursor.fetchall()
+        
+        # Format hotel data
+        for hotel in hotels_data:
+            # Fetch some amenities for the hotel
+            cursor.execute(
+                """
+                SELECT GROUP_CONCAT(CONCAT(a.amenity_icon, ' ', a.amenity_name) SEPARATOR ' | ') as amenities
+                FROM Hotel_Amenities ha
+                JOIN Amenities a ON ha.Amenity_ID = a.Amenity_ID
+                WHERE ha.Hotel_ID = %s
+                LIMIT 3
+                """, 
+                (hotel['Hotel_ID'],)
+            )
+            amenities_result = cursor.fetchone()
+            
+            # Format amenities
+            amenities = amenities_result['amenities'] if amenities_result and amenities_result['amenities'] else "📶 Free WiFi | 🏊 Pool | 🚗 Free Parking"
+            
+            # Format price
+            price = f"${hotel['min_price']:.2f} per night" if hotel['min_price'] else "Price on request"
+            
+            # Format description
+            description = f"{hotel['description'][:100]}..." if hotel['description'] else "Beautiful hotel in a prime location."
+            
+            # Add hotel to the list
+            hotels.append((
+                hotel['hotel_name'],
+                description,
+                amenities,
+                price,
+                hotel['image_path'] 
+            ))
+            
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Could not load hotels: {err}")
+        print(f"Database Error: {err}")
+    finally:
+        if 'connection' in locals() and connection.is_connected():
+            cursor.close()
+            connection.close()
+    
+    return hotels
+
+# And update the create_hotel_card function to handle the image:
+
+def create_hotel_card(parent, hotel_data):
+    """Create a hotel card widget"""
+    name, description, amenities, price, image_path = hotel_data
+    
+    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#D5D8DC", width=280, height=250)
+    card.pack_propagate(False)  # Prevent the frame from shrinking to fit its contents
+    
+    # Try to load and display the hotel image if available
+    if image_path and os.path.exists(image_path):
+        try:
+            from PIL import Image, ImageTk
+            hotel_image = Image.open(image_path)
+            hotel_image = hotel_image.resize((260, 120), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(hotel_image)
+            
+            image_label = ctk.CTkLabel(card, text="", image=photo, fg_color="white")
+            image_label.image = photo  # Keep a reference
+            image_label.pack(anchor="center", padx=10, pady=(10, 5))
+        except Exception as e:
+            print(f"Error loading hotel image: {e}")
+            # If image fails, just show the name with more padding
+            ctk.CTkLabel(card, text=name, font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(20,5))
+    else:
+        # No image, just show the name with more padding
+        ctk.CTkLabel(card, text=name, font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(20,5))
+    
+    # If we already showed the name because of missing image, don't show it again
+    if image_path and os.path.exists(image_path):
+        ctk.CTkLabel(card, text=name, font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=(5,5))
+        
+    ctk.CTkLabel(card, text=description, font=("Arial", 10), wraplength=250).pack(anchor="w", padx=10)
+    ctk.CTkLabel(card, text=amenities, font=("Arial", 9), wraplength=250).pack(anchor="w", padx=10, pady=(5,0))
+    
+    price_frame = ctk.CTkFrame(card, fg_color="white")
+    price_frame.pack(anchor="w", fill="x", padx=10, pady=(5,10))
+    
+    ctk.CTkLabel(price_frame, text=price, font=("Arial", 10, "bold"), text_color="#1E90FF").pack(side="left")
+    
+    view_btn = ctk.CTkButton(price_frame, text="View", font=("Arial", 10), 
+                           fg_color="#0F2D52", hover_color="#1E4D88", 
+                           width=60, height=25, corner_radius=5,
+                           command=lambda: view_hotel_details(name))
+    view_btn.pack(side="right", padx=10)
+    
+    return card
 # ------------------- Create Hotel Card -------------------
 def create_hotel_card(parent, hotel_data):
     """Create a hotel card widget"""

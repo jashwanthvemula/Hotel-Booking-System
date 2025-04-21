@@ -77,6 +77,9 @@ def go_to_manage_bookings():
 def go_to_manage_users():
     open_page("manage_users")
 
+def go_to_manage_hotels():
+    open_page("manage_hotels")
+
 def logout():
     """Log out the current admin and return to login page"""
     global current_admin
@@ -113,6 +116,16 @@ def get_dashboard_stats():
         # Get hotels (rooms) listed - assuming Room table contains hotel rooms
         cursor.execute("SELECT COUNT(*) FROM Room")
         stats["hotels_listed"] = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM Room")
+        stats["hotels_listed"] = cursor.fetchone()[0]
+
+        # With this improved version that counts actual hotels:
+        cursor.execute("SELECT COUNT(*) FROM Hotel")
+        hotels_count = cursor.fetchone()[0]
+        if hotels_count is not None:
+            stats["hotels_listed"] = hotels_count
+        else:
+            stats["hotels_listed"] = 0
         
     except mysql.connector.Error as err:
         print(f"Database Error: {err}")
@@ -214,6 +227,7 @@ nav_buttons = [
     ("📊 Dashboard", go_to_dashboard),
     ("📅 Manage Bookings", go_to_manage_bookings),
     ("👤 Manage Users", go_to_manage_users),
+    ("🏨 Manage Hotels", go_to_manage_hotels),
     ("🚪 Logout", logout)
 ]
 
