@@ -321,12 +321,42 @@ def create_hotel_card(parent, hotel_data):
 # ------------------- Create Hotel Card -------------------
 def create_hotel_card(parent, hotel_data):
     """Create a hotel card widget"""
-    name, description, amenities, price = hotel_data
+    # Check if we have 5 elements (including image) or 4 elements (old format)
+    if len(hotel_data) == 5:
+        name, description, amenities, price, image_path = hotel_data
+    else:
+        name, description, amenities, price = hotel_data
+        image_path = None
     
-    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#D5D8DC", width=280, height=150)
+    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#D5D8DC", width=280, height=250)
     card.pack_propagate(False)  # Prevent the frame from shrinking to fit its contents
     
-    ctk.CTkLabel(card, text=name, font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=(10,5))
+    # Try to load and display the hotel image if available
+    if image_path and os.path.exists(image_path):
+        try:
+            from PIL import Image, ImageTk
+            hotel_image = Image.open(image_path)
+            hotel_image = hotel_image.resize((260, 120), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(hotel_image)
+            
+            image_label = ctk.CTkLabel(card, text="", image=photo, fg_color="white")
+            image_label.image = photo  # Keep a reference
+            image_label.pack(anchor="center", padx=10, pady=(10, 5))
+        except Exception as e:
+            print(f"Error loading hotel image: {e}")
+            # If image fails, just show the name with more padding
+            ctk.CTkLabel(card, text=name, font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(20,5))
+    else:
+        # No image, just show the name with more padding
+        ctk.CTkLabel(card, text=name, font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(20,5))
+    
+    # If we already showed the name because of missing image, don't show it again
+    if not (image_path and os.path.exists(image_path)):
+        # No need to show name again
+        pass
+    else:
+        ctk.CTkLabel(card, text=name, font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=(5,5))
+        
     ctk.CTkLabel(card, text=description, font=("Arial", 10), wraplength=250).pack(anchor="w", padx=10)
     ctk.CTkLabel(card, text=amenities, font=("Arial", 9), wraplength=250).pack(anchor="w", padx=10, pady=(5,0))
     
