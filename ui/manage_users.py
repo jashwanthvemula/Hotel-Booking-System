@@ -830,7 +830,7 @@ details_content = ctk.CTkFrame(details_frame, fg_color="white")
 details_content.pack(fill="x", padx=20, pady=(15, 15))
 
 # User details
-details_name = ctk.CTkLabel(details_content, text="Full Name", 
+details_name = ctk.CTkLabel(details_content, text=" Full Name", 
                           font=("Arial", 16, "bold"), text_color=PRIMARY_COLOR)
 details_name.pack(anchor="w", pady=(0, 5))
 
