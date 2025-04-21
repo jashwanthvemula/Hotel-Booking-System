@@ -116,12 +116,36 @@ def open_home_page(user_id):
 def handle_enter(event):
     login_user()
 
-# ------------------- Create Hover Effect -------------------
-def on_enter(e, button, hover_color):
-    button.configure(fg_color=hover_color)
+# ------------------- Icon Loader Function -------------------
+def load_icon(icon_path, size=(20, 20)):
+    """Load an icon image and resize it to the specified size"""
+    try:
+        # Check if the icon exists
+        if not os.path.exists(icon_path):
+            # Try looking in a resources/icons directory
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            alt_path = os.path.join(base_dir, "resources", "icons", os.path.basename(icon_path))
+            if os.path.exists(alt_path):
+                icon_path = alt_path
+            else:
+                print(f"Icon not found: {icon_path}")
+                return None
+                
+        icon = Image.open(icon_path)
+        icon = icon.resize(size, Image.LANCZOS)
+        return ImageTk.PhotoImage(icon)
+    except Exception as e:
+        print(f"Error loading icon {icon_path}: {e}")
+        return None
 
-def on_leave(e, button, default_color):
-    button.configure(fg_color=default_color)
+# ----------------- Color Scheme -----------------
+# Consistent color palette
+PRIMARY_COLOR = "#2C3E50"  # Dark blue for main elements
+SECONDARY_COLOR = "#3498DB"  # Lighter blue for accents
+HOVER_COLOR = "#1E88E5"  # Hover state color
+TEXT_COLOR = "#333333"  # Dark gray for text
+LIGHT_TEXT = "#7F8C8D"  # Light gray for secondary text
+BORDER_COLOR = "#E0E0E0"  # Light gray for borders
 
 # ----------------- Setup -----------------
 ctk.set_appearance_mode("light")
@@ -138,15 +162,6 @@ try:
     app.option_add("*Font", "Montserrat 10")  # Set default font if available
 except:
     pass
-
-# ----------------- Color Scheme -----------------
-# Consistent color palette
-PRIMARY_COLOR = "#2C3E50"  # Dark blue for main elements
-SECONDARY_COLOR = "#3498DB"  # Lighter blue for accents
-HOVER_COLOR = "#1E88E5"  # Hover state color
-TEXT_COLOR = "#333333"  # Dark gray for text
-LIGHT_TEXT = "#7F8C8D"  # Light gray for secondary text
-BORDER_COLOR = "#E0E0E0"  # Light gray for borders
 
 # ----------------- Main Frame -----------------
 main_frame = ctk.CTkFrame(app, fg_color="white", corner_radius=0)
@@ -263,18 +278,30 @@ content_frame.pack(expand=True, fill="both", padx=50)
 logo_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 logo_frame.pack(pady=(80, 0))
 
-# We're using a CTkLabel with a background color for a more professional look
-# Instead of the emoji character
-logo_label = ctk.CTkLabel(
-    logo_frame, 
-    text="H", 
-    font=("Montserrat", 36, "bold"), 
-    text_color="white",
-    fg_color=PRIMARY_COLOR,
-    corner_radius=12,
-    width=70,
-    height=70
-)
+# Try to load a hotel logo image
+hotel_logo_image = None
+logo_path = "hotel_logo.png"  # Replace with your actual logo file
+hotel_logo_image = load_icon(logo_path, size=(70, 70))
+
+if hotel_logo_image:
+    logo_label = ctk.CTkLabel(
+        logo_frame,
+        text="",
+        image=hotel_logo_image
+    )
+    logo_label.image = hotel_logo_image  # Keep a reference
+else:
+    # Fallback to text-based logo
+    logo_label = ctk.CTkLabel(
+        logo_frame, 
+        text="H", 
+        font=("Montserrat", 36, "bold"), 
+        text_color="white",
+        fg_color=PRIMARY_COLOR,
+        corner_radius=12,
+        width=70,
+        height=70
+    )
 logo_label.pack()
 
 ctk.CTkLabel(
@@ -291,51 +318,95 @@ ctk.CTkLabel(
     text_color=LIGHT_TEXT
 ).pack(pady=(0, 30))
 
-# Enhanced Email Field
-email_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-email_frame.pack(fill="x", pady=(0, 15))
+# --------------------- Email Field with Centered Label ---------------------
+email_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+email_label_frame.pack(fill="x", pady=(0, 5))
 
-ctk.CTkLabel(
-    email_frame, 
-    text="Email", 
-    font=("Montserrat", 14),
-    text_color=TEXT_COLOR,
-    anchor="w"
-).pack(fill="x")
+# Load email icon
+email_icon_image = None
+email_icon_path = "email_icon.png"  # Replace with your actual icon file
+email_icon_image = load_icon(email_icon_path)
 
+# Create a label frame to contain both icon and text
+email_label_container = ctk.CTkFrame(email_label_frame, fg_color="transparent")
+email_label_container.pack(anchor="center")
+
+# Add icon if available
+if email_icon_image:
+    email_icon_label = ctk.CTkLabel(
+        email_label_container,
+        text="",
+        image=email_icon_image,
+        width=20
+    )
+    email_icon_label.image = email_icon_image  # Keep a reference
+    email_icon_label.pack(side="left", padx=(0, 5))
+
+# Add text label
+email_label = ctk.CTkLabel(
+    email_label_container,
+    text="Email",
+    font=("Montserrat", 12),
+    text_color=LIGHT_TEXT
+)
+email_label.pack(side="left")
+
+# Email entry field
 email_entry = ctk.CTkEntry(
-    email_frame, 
-    width=400, 
-    height=45, 
+    content_frame,
+    width=400,
+    height=45,
     placeholder_text="Enter your email",
     border_color=BORDER_COLOR,
     corner_radius=6
 )
-email_entry.pack(fill="x", pady=(5, 0))
+email_entry.pack(pady=(0, 15))
 email_entry.focus()  # Set initial focus to email field
 
-# Enhanced Password Field
-password_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-password_frame.pack(fill="x", pady=(0, 5))
+# --------------------- Password Field with Centered Label ---------------------
+password_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+password_label_frame.pack(fill="x", pady=(0, 5))
 
-ctk.CTkLabel(
-    password_frame, 
-    text="Password", 
-    font=("Montserrat", 14),
-    text_color=TEXT_COLOR,
-    anchor="w"
-).pack(fill="x")
+# Load password icon
+password_icon_image = None
+password_icon_path = "lock_icon.png"  # Replace with your actual icon file
+password_icon_image = load_icon(password_icon_path)
 
+# Create a label frame to contain both icon and text
+password_label_container = ctk.CTkFrame(password_label_frame, fg_color="transparent")
+password_label_container.pack(anchor="center")
+
+# Add icon if available
+if password_icon_image:
+    password_icon_label = ctk.CTkLabel(
+        password_label_container,
+        text="",
+        image=password_icon_image,
+        width=20
+    )
+    password_icon_label.image = password_icon_image  # Keep a reference
+    password_icon_label.pack(side="left", padx=(0, 5))
+
+# Add text label
+password_label = ctk.CTkLabel(
+    password_label_container,
+    text="Password",
+    font=("Montserrat", 12),
+    text_color=LIGHT_TEXT
+)
+password_label.pack(side="left")
+
+# Password entry field
 password_entry = ctk.CTkEntry(
-    password_frame, 
-    width=400, 
-    height=45, 
-    show="•", 
+    content_frame,
+    width=400,
+    height=45,
+    show="•",
     placeholder_text="Enter your password",
     border_color=BORDER_COLOR,
     corner_radius=6
 )
-password_entry.pack(fill="x", pady=(5, 0))
+password_entry.pack(pady=(0, 15))
 # Bind Enter key to login function
 password_entry.bind("<Return>", handle_enter)
 
