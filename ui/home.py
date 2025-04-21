@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox
+from tkinter import messagebox, Canvas, Scrollbar
 import mysql.connector
 import subprocess
 import sys
@@ -56,11 +56,15 @@ def load_user_session(user_id=None):
     return False
 
 # ------------------- Navigation Functions -------------------
-def open_page(page_name):
+def open_page(page_name, hotel_id=None):
     """Open another page and close the current one"""
     try:
         # Pass the current user ID to the next page if a user is logged in
         user_param = [str(current_user['user_id'])] if current_user else []
+        
+        # If hotel_id is provided (for booking page), add it to the parameters
+        if hotel_id is not None:
+            user_param.append(str(hotel_id))
         
         # Construct the command to run the appropriate Python file
         command = [sys.executable, f"{page_name.lower()}.py"] + user_param
@@ -74,10 +78,10 @@ def go_to_home():
     open_page("home")
 
 def go_to_bookings():
-    open_page("book")
+    open_page("bookings")
 
 def go_to_profile():
-    open_page("user")
+    open_page("profile")
 
 def go_to_feedback():
     open_page("feedback")
@@ -117,95 +121,117 @@ def search_hotels():
         if guests and not guests.isdigit():
             messagebox.showwarning("Input Error", "Number of guests must be a number.")
             return
-            
-        # Perform the search - for now just show a message
-        messagebox.showinfo("Search Results", 
-                          f"Searching for hotels in {location}\n"
-                          f"Check-in: {check_in.strftime('%m/%d/%Y') if check_in else 'Not specified'}\n"
-                          f"Check-out: {check_out.strftime('%m/%d/%Y') if check_out else 'Not specified'}\n"
-                          f"Guests: {guests if guests else 'Not specified'}")
         
-        # Here you would typically redirect to a search results page
-        # open_page("search_results")  # Uncomment when you have this page
+        # Clear existing hotel cards
+        for widget in scrollable_frame.winfo_children():
+            widget.destroy()
+        
+        # Perform the search from database
+        try:
+            connection = connect_db()
+            cursor = connection.cursor(dictionary=True)
+            
+            # Build the search query
+            query = """
+                SELECT h.Hotel_ID, h.hotel_name, h.location, 
+                       h.description, h.star_rating, h.image_path,
+                       MIN(rc.base_price) as min_price
+                FROM Hotel h
+                LEFT JOIN RoomCategory rc ON h.Hotel_ID = rc.Hotel_ID
+                WHERE 1=1
+            """
+            params = []
+            
+            # Add location filter
+            if location:
+                query += " AND h.location LIKE %s"
+                params.append(f"%{location}%")
+                
+            # Add room availability filter if dates are provided
+            if check_in and check_out:
+                query += """ 
+                    AND EXISTS (
+                        SELECT 1 FROM Room r 
+                        WHERE r.Hotel_ID = h.Hotel_ID 
+                        AND r.Availability_status = 'Available'
+                    )
+                """
+                
+            # Finish the query
+            query += " GROUP BY h.Hotel_ID ORDER BY h.star_rating DESC, min_price"
+            
+            cursor.execute(query, params)
+            hotels_data = cursor.fetchall()
+            
+            # Display search results
+            if hotels_data:
+                # Format hotel data and create cards
+                for hotel in hotels_data:
+                    # Format hotel data similar to load_popular_hotels
+                    cursor.execute(
+                        """
+                        SELECT GROUP_CONCAT(CONCAT(a.amenity_icon, ' ', a.amenity_name) SEPARATOR ' | ') as amenities
+                        FROM Hotel_Amenities ha
+                        JOIN Amenities a ON ha.Amenity_ID = a.Amenity_ID
+                        WHERE ha.Hotel_ID = %s
+                        LIMIT 3
+                        """, 
+                        (hotel['Hotel_ID'],)
+                    )
+                    amenities_result = cursor.fetchone()
+                    
+                    # Format amenities
+                    amenities = amenities_result['amenities'] if amenities_result and amenities_result['amenities'] else "📶 Free WiFi | 🏊 Pool | 🚗 Free Parking"
+                    
+                    # Format price
+                    price = f"${hotel['min_price']:.2f} per night" if hotel['min_price'] else "Price on request"
+                    
+                    # Format description
+                    description = f"{hotel['description'][:100]}..." if hotel['description'] else "Beautiful hotel in a prime location."
+                    
+                    # Create hotel card
+                    hotel_data = (
+                        hotel['hotel_name'],
+                        description,
+                        amenities,
+                        price,
+                        hotel['image_path'],
+                        hotel['Hotel_ID']  # Pass the Hotel_ID for booking
+                    )
+                    
+                    card = create_hotel_card(scrollable_frame, hotel_data)
+                    card.pack(anchor="w", padx=10, pady=10, fill="x")
+            else:
+                # No hotels found
+                no_results_label = ctk.CTkLabel(
+                    scrollable_frame,
+                    text="No hotels found matching your criteria.",
+                    font=("Arial", 14),
+                    text_color="gray"
+                )
+                no_results_label.pack(pady=50)
+                
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Search failed: {err}")
+            print(f"Database Error: {err}")
+        finally:
+            if 'connection' in locals() and connection.is_connected():
+                cursor.close()
+                connection.close()
     
     except Exception as e:
         messagebox.showerror("Search Error", str(e))
 
 # ------------------- View Hotel Details -------------------
-def view_hotel_details(hotel_name):
+def view_hotel_details(hotel_id):
     """Open the hotel details page for the selected hotel"""
     try:
-        # Here you would typically pass the hotel ID to the hotel details page
-        # For now, just show a message
-        messagebox.showinfo("Hotel Details", f"Viewing details for {hotel_name}")
-        
-        # Example of how you might navigate to a hotel details page
-        # subprocess.Popen([sys.executable, "hotel_details.py", str(hotel_id)])
-        # app.destroy()
+        # Navigate to the book page with the hotel ID
+        open_page("book", hotel_id)
     except Exception as e:
         messagebox.showerror("Navigation Error", f"Unable to view hotel details: {e}")
 
 # ------------------- Load Popular Hotels -------------------
-def load_popular_hotels():
-    """Load popular hotels from the database"""
-    hotels = []
-    try:
-        connection = connect_db()
-        cursor = connection.cursor(dictionary=True)
-        
-        # Query to get popular hotels with their details
-        cursor.execute(
-            """
-            SELECT h.Hotel_ID, h.hotel_name, h.location, 
-                   h.description, h.star_rating, 
-                   MIN(rc.base_price) as min_price
-            FROM Hotel h
-            JOIN RoomCategory rc ON h.Hotel_ID = rc.Hotel_ID
-            GROUP BY h.Hotel_ID
-            ORDER BY h.star_rating DESC, min_price
-            LIMIT 3
-            """
-        )
-        hotels_data = cursor.fetchall()
-        
-        # Format hotel data
-        for hotel in hotels_data:
-            # Fetch some amenities for the hotel
-            cursor.execute(
-                """
-                SELECT GROUP_CONCAT(a.amenity_name SEPARATOR ' | ') as amenities
-                FROM Hotel_Amenities ha
-                JOIN Amenities a ON ha.Amenity_ID = a.Amenity_ID
-                WHERE ha.Hotel_ID = %s
-                LIMIT 3
-                """, 
-                (hotel['Hotel_ID'],)
-            )
-            amenities_result = cursor.fetchone()
-            
-            # Format amenities
-            amenities = amenities_result['amenities'] if amenities_result and amenities_result['amenities'] else "📶 Free WiFi | 🏊 Pool | 🚗 Free Parking"
-            
-            # Add hotel to the list
-            hotels.append((
-                hotel['hotel_name'],
-                f"{hotel['description'][:100]}...",
-                amenities,
-                f"${hotel['min_price']:.2f} per night"
-            ))
-            
-    except mysql.connector.Error as err:
-        messagebox.showerror("Database Error", f"Could not load hotels: {err}")
-        print(f"Database Error: {err}")
-    finally:
-        if 'connection' in locals() and connection.is_connected():
-            cursor.close()
-            connection.close()
-    
-    return hotels
-
-# Replace the existing load_popular_hotels function in home.py with this updated version
-
 def load_popular_hotels():
     """Load popular hotels from the database"""
     hotels = []
@@ -223,7 +249,7 @@ def load_popular_hotels():
             LEFT JOIN RoomCategory rc ON h.Hotel_ID = rc.Hotel_ID
             GROUP BY h.Hotel_ID
             ORDER BY h.star_rating DESC, min_price
-            LIMIT 3
+            LIMIT 6
             """
         )
         hotels_data = cursor.fetchall()
@@ -258,7 +284,8 @@ def load_popular_hotels():
                 description,
                 amenities,
                 price,
-                hotel['image_path'] 
+                hotel['image_path'],
+                hotel['Hotel_ID']  # Add Hotel_ID to pass to booking page
             ))
             
     except mysql.connector.Error as err:
@@ -271,65 +298,21 @@ def load_popular_hotels():
     
     return hotels
 
-# And update the create_hotel_card function to handle the image:
-
-def create_hotel_card(parent, hotel_data):
-    """Create a hotel card widget"""
-    name, description, amenities, price, image_path = hotel_data
-    
-    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#D5D8DC", width=280, height=250)
-    card.pack_propagate(False)  # Prevent the frame from shrinking to fit its contents
-    
-    # Try to load and display the hotel image if available
-    if image_path and os.path.exists(image_path):
-        try:
-            from PIL import Image, ImageTk
-            hotel_image = Image.open(image_path)
-            hotel_image = hotel_image.resize((260, 120), Image.LANCZOS)
-            photo = ImageTk.PhotoImage(hotel_image)
-            
-            image_label = ctk.CTkLabel(card, text="", image=photo, fg_color="white")
-            image_label.image = photo  # Keep a reference
-            image_label.pack(anchor="center", padx=10, pady=(10, 5))
-        except Exception as e:
-            print(f"Error loading hotel image: {e}")
-            # If image fails, just show the name with more padding
-            ctk.CTkLabel(card, text=name, font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(20,5))
-    else:
-        # No image, just show the name with more padding
-        ctk.CTkLabel(card, text=name, font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(20,5))
-    
-    # If we already showed the name because of missing image, don't show it again
-    if image_path and os.path.exists(image_path):
-        ctk.CTkLabel(card, text=name, font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=(5,5))
-        
-    ctk.CTkLabel(card, text=description, font=("Arial", 10), wraplength=250).pack(anchor="w", padx=10)
-    ctk.CTkLabel(card, text=amenities, font=("Arial", 9), wraplength=250).pack(anchor="w", padx=10, pady=(5,0))
-    
-    price_frame = ctk.CTkFrame(card, fg_color="white")
-    price_frame.pack(anchor="w", fill="x", padx=10, pady=(5,10))
-    
-    ctk.CTkLabel(price_frame, text=price, font=("Arial", 10, "bold"), text_color="#1E90FF").pack(side="left")
-    
-    view_btn = ctk.CTkButton(price_frame, text="View", font=("Arial", 10), 
-                           fg_color="#0F2D52", hover_color="#1E4D88", 
-                           width=60, height=25, corner_radius=5,
-                           command=lambda: view_hotel_details(name))
-    view_btn.pack(side="right", padx=10)
-    
-    return card
 # ------------------- Create Hotel Card -------------------
 def create_hotel_card(parent, hotel_data):
     """Create a hotel card widget"""
-    # Check if we have 5 elements (including image) or 4 elements (old format)
-    if len(hotel_data) == 5:
+    # Check if we have 6 elements (including image and hotel_id) or fewer
+    if len(hotel_data) >= 6:
+        name, description, amenities, price, image_path, hotel_id = hotel_data
+    elif len(hotel_data) == 5:
         name, description, amenities, price, image_path = hotel_data
+        hotel_id = None
     else:
         name, description, amenities, price = hotel_data
         image_path = None
+        hotel_id = None
     
-    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#D5D8DC", width=280, height=250)
-    card.pack_propagate(False)  # Prevent the frame from shrinking to fit its contents
+    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#D5D8DC", height=250)
     
     # Try to load and display the hotel image if available
     if image_path and os.path.exists(image_path):
@@ -351,29 +334,24 @@ def create_hotel_card(parent, hotel_data):
         ctk.CTkLabel(card, text=name, font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(20,5))
     
     # If we already showed the name because of missing image, don't show it again
-    if not (image_path and os.path.exists(image_path)):
-        # No need to show name again
-        pass
-    else:
+    if image_path and os.path.exists(image_path):
         ctk.CTkLabel(card, text=name, font=("Arial", 12, "bold")).pack(anchor="w", padx=10, pady=(5,5))
         
-    ctk.CTkLabel(card, text=description, font=("Arial", 10), wraplength=250).pack(anchor="w", padx=10)
-    ctk.CTkLabel(card, text=amenities, font=("Arial", 9), wraplength=250).pack(anchor="w", padx=10, pady=(5,0))
+    ctk.CTkLabel(card, text=description, font=("Arial", 10), wraplength=650).pack(anchor="w", padx=10)
+    ctk.CTkLabel(card, text=amenities, font=("Arial", 9), wraplength=650).pack(anchor="w", padx=10, pady=(5,0))
     
     price_frame = ctk.CTkFrame(card, fg_color="white")
     price_frame.pack(anchor="w", fill="x", padx=10, pady=(5,10))
     
     ctk.CTkLabel(price_frame, text=price, font=("Arial", 10, "bold"), text_color="#1E90FF").pack(side="left")
     
-    view_btn = ctk.CTkButton(price_frame, text="View", font=("Arial", 10), 
+    view_btn = ctk.CTkButton(price_frame, text="Book Now", font=("Arial", 10), 
                            fg_color="#0F2D52", hover_color="#1E4D88", 
-                           width=60, height=25, corner_radius=5,
-                           command=lambda: view_hotel_details(name))
+                           width=80, height=25, corner_radius=5,
+                           command=lambda h_id=hotel_id: view_hotel_details(h_id))
     view_btn.pack(side="right", padx=10)
     
     return card
-
-# No default hotels - all hotels are fetched from database
 
 # ----------------- Setup -----------------
 ctk.set_appearance_mode("light")
@@ -486,34 +464,54 @@ search_btn = ctk.CTkButton(search_grid, text="Search Rooms", font=("Arial", 12, 
                          height=35, width=150, command=search_hotels)
 search_btn.grid(row=1, column=4, padx=(20, 0))
 
-# ----------------- Popular Hotels Section -----------------
+# ----------------- Popular Hotels Section (Scrollable) -----------------
 hotels_section = ctk.CTkFrame(content_frame, fg_color="white")
 hotels_section.pack(fill="both", expand=True, padx=30, pady=10)
 
 ctk.CTkLabel(hotels_section, text="Popular Hotels", 
            font=("Arial", 20, "bold"), text_color="#2C3E50").pack(anchor="w", pady=(0, 15))
 
-# Hotel Cards Container
-hotel_cards = ctk.CTkFrame(hotels_section, fg_color="transparent")
-hotel_cards.pack(fill="both", expand=True)
+# Create a canvas for scrolling
+canvas = Canvas(hotels_section, bg="white", highlightthickness=0)
+scrollbar = Scrollbar(hotels_section, orient="vertical", command=canvas.yview)
+scrollable_frame = ctk.CTkFrame(canvas, fg_color="white")
+
+# Configure the canvas
+scrollable_frame.bind(
+    "<Configure>",
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+)
+
+canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+canvas.configure(yscrollcommand=scrollbar.set)
+
+# Pack the canvas and scrollbar
+canvas.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
 
 # Load hotels from database
 hotels = load_popular_hotels()
 
 # Create hotel cards or show message if no hotels found
 if hotels:
-    for i, hotel_data in enumerate(hotels):
-        card = create_hotel_card(hotel_cards, hotel_data)
-        card.pack(side="left", padx=10, pady=10)
+    for hotel_data in enumerate(hotels):
+        card = create_hotel_card(scrollable_frame, hotel_data[1])
+        card.pack(anchor="w", padx=10, pady=10, fill="x")
 else:
     # Display a message when no hotels are found
     no_hotels_label = ctk.CTkLabel(
-        hotel_cards, 
+        scrollable_frame, 
         text="No hotels found in the database.\nPlease add hotels through the admin interface.", 
         font=("Arial", 14), 
         text_color="gray"
     )
     no_hotels_label.pack(pady=50)
+
+# Enable mousewheel scrolling
+def _on_mousewheel(event):
+    canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
 # Run the application
 if __name__ == "__main__":

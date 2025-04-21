@@ -19,7 +19,6 @@ def connect_db():
 # ------------------- Global Variables -------------------
 current_user = None
 hotel_id = None
-room_id = None
 room_prices = {}  # To store room prices for calculation
 
 # ------------------- User Session Management -------------------
@@ -108,29 +107,30 @@ def load_hotel_details(hotel_id_param=None):
         connection = connect_db()
         cursor = connection.cursor(dictionary=True)
         
-        # Adjust query based on your database schema
+        # Get hotel details
         cursor.execute(
             """
-            SELECT r.Room_ID, r.Room_Type, r.Price_per_Night, r.Availability_status, r.Updated_By
-            FROM Room r
-            WHERE r.Room_ID = %s
+            SELECT h.Hotel_ID, h.hotel_name, h.location, h.description, h.star_rating, h.image_path
+            FROM Hotel h
+            WHERE h.Hotel_ID = %s
             """,
             (hotel_id,)
         )
         hotel_data = cursor.fetchone()
         
         if hotel_data:
-            # Set hotel name and location (adjust based on your schema)
-            hotel_name_label.configure(text=f"{hotel_data['Room_Type']}")
-            hotel_location_label.configure(text=f"📍 123 Main Street, Mt. Pleasant, Michigan")
+            # Set hotel name and location
+            hotel_name_label.configure(text=f"{hotel_data['hotel_name']}")
+            hotel_location_label.configure(text=f"📍 {hotel_data['location']}")
             
             # Load available room types for this hotel
             cursor.execute(
                 """
-                SELECT Room_ID, Room_Type, Price_per_Night 
+                SELECT Room_ID, Room_Type, Price_per_Night, Availability_status
                 FROM Room 
-                WHERE Availability_status = 'Available'
-                """
+                WHERE Hotel_ID = %s AND Availability_status = 'Available'
+                """,
+                (hotel_id,)
             )
             room_types = cursor.fetchall()
             
@@ -169,17 +169,17 @@ def calculate_total_price():
         # Get room price
         room_selection = room_type_dropdown.get()
         if "No rooms available" in room_selection:
-            return 0
+            return 0, 0
             
         room_type = room_selection.split(" - $")[0]
         price_per_night = room_prices.get(room_type, 0)
         
         # Calculate number of nights
-        check_in_str = checkin_entry.get() if hasattr(checkin_entry, 'get_date') else checkin_entry.get()
-        check_out_str = checkout_entry.get() if hasattr(checkout_entry, 'get_date') else checkout_entry.get()
+        check_in_str = checkin_entry.get_date() if hasattr(checkin_entry, 'get_date') else checkin_entry.get()
+        check_out_str = checkout_entry.get_date() if hasattr(checkout_entry, 'get_date') else checkout_entry.get()
         
         if not check_in_str or not check_out_str:
-            return 0
+            return 0, 0
             
         try:
             # Parse dates
@@ -196,7 +196,7 @@ def calculate_total_price():
             # Calculate night difference
             nights = (check_out - check_in).days
             if nights < 1:
-                return 0
+                return 0, 0
                 
             return price_per_night * nights, nights
             
@@ -224,11 +224,11 @@ def update_booking_summary(event=None):
     
     # Update summary labels
     summary_hotel_label.configure(text=f"Hotel: {hotel_name_label.cget('text')}")
-    summary_location_label.configure(text=f"Location: New York, USA")  # Replace with actual location data
+    summary_location_label.configure(text=f"Location: {hotel_location_label.cget('text').replace('📍 ', '')}")
     summary_room_label.configure(text=f"Room Type: {room_type}")
     summary_price_label.configure(text=f"Price per Night: ${price_per_night}")
     summary_nights_label.configure(text=f"Total Nights: {nights if nights else 0}")
-    summary_total_label.configure(text=f"Total Price: ${total_price if total_price else 0}")
+    summary_total_label.configure(text=f"Total Price: ${total_price:.2f}" if total_price else "Total Price: $0.00")
 
 def confirm_booking():
     """Process the booking confirmation"""
@@ -294,7 +294,7 @@ def confirm_booking():
                                 f"Check-in: {check_in.strftime('%m/%d/%Y')}\n"
                                 f"Check-out: {check_out.strftime('%m/%d/%Y')}\n"
                                 f"Guests: {guests}\n"
-                                f"Total Price: ${total_price}\n"
+                                f"Total Price: ${total_price:.2f}\n"
                                 f"Payment Method: {payment_method}")
     
     if not confirm:
@@ -307,8 +307,8 @@ def confirm_booking():
         
         # Get room ID for the selected room type
         cursor.execute(
-            "SELECT Room_ID FROM Room WHERE Room_Type = %s AND Availability_status = 'Available' LIMIT 1",
-            (room_type,)
+            "SELECT Room_ID FROM Room WHERE Room_Type = %s AND Availability_status = 'Available' AND Hotel_ID = %s LIMIT 1",
+            (room_type, hotel_id)
         )
         room_result = cursor.fetchone()
         
@@ -322,11 +322,11 @@ def confirm_booking():
         cursor.execute(
             """
             INSERT INTO Booking (User_ID, Room_ID, Check_IN_Date, Check_Out_Date, 
-                               Total_Cost, Booking_Status)
-            VALUES (%s, %s, %s, %s, %s, %s)
+                               Total_Cost, Booking_Status, Guests)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
             (current_user['user_id'], room_id, check_in.strftime('%Y-%m-%d'), 
-             check_out.strftime('%Y-%m-%d'), total_price, 'Confirmed')
+             check_out.strftime('%Y-%m-%d'), total_price, 'Confirmed', guests_count)
         )
         
         # Update room availability
@@ -377,7 +377,7 @@ ctk.CTkLabel(sidebar, text="🏨 Hotel Booking", font=("Arial", 18, "bold"), tex
 # Navigation buttons with icons
 nav_buttons = [
     ("🏠 Home", go_to_home),
-    ("📅 Bookings", go_to_bookings),
+    ("📅 My Bookings", go_to_bookings),
     ("👤 Profile", go_to_profile),
     ("💬 Feedback", go_to_feedback),
     ("🚪 Logout", logout)
@@ -539,7 +539,7 @@ summary_price_label = ctk.CTkLabel(summary_content, text="Price per Night: $150"
                                  font=("Arial", 14), anchor="w")
 summary_price_label.pack(anchor="w", pady=3)
 
-summary_nights_label = ctk.CTkLabel(summary_content, text="Total Nights: 2", 
+summary_nights_label = ctk.CTkLabel(summary_content, text="Total Nights: 1", 
                                   font=("Arial", 14), anchor="w")
 summary_nights_label.pack(anchor="w", pady=3)
 
@@ -547,7 +547,7 @@ summary_nights_label.pack(anchor="w", pady=3)
 total_price_frame = ctk.CTkFrame(summary_content, fg_color="white", height=50)
 total_price_frame.pack(fill="x", pady=(20, 10))
 
-summary_total_label = ctk.CTkLabel(total_price_frame, text="Total Price: $300", 
+summary_total_label = ctk.CTkLabel(total_price_frame, text="Total Price: $150.00", 
                                  font=("Arial", 16, "bold"), text_color="#2C3E50")
 summary_total_label.pack(anchor="w")
 
