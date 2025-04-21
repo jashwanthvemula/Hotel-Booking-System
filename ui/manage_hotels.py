@@ -462,7 +462,7 @@ def update_hotel():
 
 def delete_hotel():
     """Delete a hotel (with confirmation)"""
-    global selected_hotel
+    #global selected_hotel
     
     if not selected_hotel:
         messagebox.showwarning("Selection Error", "No hotel selected")
@@ -509,7 +509,7 @@ def delete_hotel():
 
 def add_room_category():
     """Add a room category to the selected hotel"""
-    global selected_hotel
+    #global selected_hotel
     
     if not selected_hotel:
         messagebox.showwarning("Selection Error", "No hotel selected")
@@ -585,7 +585,7 @@ def add_room_category():
             dialog.destroy()
             
             # Refresh hotel details
-            global selected_hotel
+            #global selected_hotel
             selected_hotel = load_hotel_details(selected_hotel['Hotel_ID'])
             show_hotel_details()
             
@@ -604,7 +604,7 @@ def add_room_category():
 
 def edit_room_category(category_id):
     """Edit a room category"""
-    global selected_hotel
+    #global selected_hotel
     
     if not selected_hotel or not category_id:
         messagebox.showwarning("Selection Error", "No category selected")
@@ -715,7 +715,7 @@ def edit_room_category(category_id):
 
 def delete_room_category(category_id):
     """Delete a room category"""
-    global selected_hotel
+    #global selected_hotel
     
     if not selected_hotel or not category_id:
         messagebox.showwarning("Selection Error", "No category selected")
@@ -803,7 +803,8 @@ def populate_hotel_table():
 
 def show_hotel_details(event=None):
     """Show details for the selected hotel"""
-    global selected_hotel, hotel_image_path
+   # global selected_hotel, 
+    global hotel_image_path
     
     # Reset image path
     hotel_image_path = None
@@ -931,7 +932,7 @@ def clear_hotel_form():
     image_preview_label.configure(image=None, text="No image selected")
     
     # Reset selected hotel
-    global selected_hotel
+    #global selected_hotel
     selected_hotel = None
     
     # Switch to create mode interface
