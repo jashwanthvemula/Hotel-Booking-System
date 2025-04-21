@@ -312,10 +312,32 @@ def search_hotels():
 def view_hotel_details(hotel_id):
     """Open the hotel details page for the selected hotel"""
     try:
-        # Navigate to the book page with the hotel ID
-        open_page("book", hotel_id)
+        # Check if we're using Hotel table or directly using Room table
+        connection = connect_db()
+        cursor = connection.cursor()
+        
+        cursor.execute("SHOW TABLES LIKE 'Hotel'")
+        hotel_table_exists = cursor.fetchone() is not None
+        
+        if hotel_table_exists:
+            # We're using the proper Hotel structure - pass the hotel_id as is
+            # Navigate to the book page with the hotel ID
+            open_page("book", hotel_id)
+        else:
+            # We're using Room table directly - the hotel_id is actually a Room_ID
+            # Still pass it to book.py, which will handle it properly
+            open_page("book", hotel_id)
+            
+    except mysql.connector.Error as err:
+        print(f"Database Error in view_hotel_details: {err}")
+        messagebox.showerror("Database Error", f"Error accessing hotel details: {err}")
     except Exception as e:
+        print(f"Error in view_hotel_details: {e}")
         messagebox.showerror("Navigation Error", f"Unable to view hotel details: {e}")
+    finally:
+        if 'connection' in locals() and connection.is_connected():
+            cursor.close()
+            connection.close()
 
 # ------------------- Load Popular Hotels -------------------
 def load_popular_hotels():

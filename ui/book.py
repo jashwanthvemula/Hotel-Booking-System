@@ -107,56 +107,117 @@ def load_hotel_details(hotel_id_param=None):
         connection = connect_db()
         cursor = connection.cursor(dictionary=True)
         
-        # Get hotel details
-        cursor.execute(
-            """
-            SELECT h.Hotel_ID, h.hotel_name, h.location, h.description, h.star_rating, h.image_path
-            FROM Hotel h
-            WHERE h.Hotel_ID = %s
-            """,
-            (hotel_id,)
-        )
-        hotel_data = cursor.fetchone()
+        # First check if we're dealing with data from the Hotel table or directly from Room table
+        cursor.execute("SHOW TABLES LIKE 'Hotel'")
+        hotel_table_exists = cursor.fetchone() is not None
         
-        if hotel_data:
-            # Set hotel name and location
-            hotel_name_label.configure(text=f"{hotel_data['hotel_name']}")
-            hotel_location_label.configure(text=f"📍 {hotel_data['location']}")
+        if hotel_table_exists:
+            # Get hotel details from Hotel table
+            cursor.execute(
+                """
+                SELECT h.Hotel_ID, h.hotel_name, h.location, h.description, h.star_rating, h.image_path
+                FROM Hotel h
+                WHERE h.Hotel_ID = %s
+                """,
+                (hotel_id,)
+            )
+            hotel_data = cursor.fetchone()
             
-            # Load available room types for this hotel
+            if hotel_data:
+                # Set hotel name and location
+                hotel_name_label.configure(text=f"{hotel_data['hotel_name']}")
+                hotel_location_label.configure(text=f"📍 {hotel_data['location']}")
+                
+                # Load available room types for this hotel from RoomCategory
+                try:
+                    cursor.execute(
+                        """
+                        SELECT rc.Category_ID as Room_ID, rc.category_name as Room_Type, 
+                               rc.base_price as Price_per_Night, 'Available' as Availability_status
+                        FROM RoomCategory rc
+                        WHERE rc.Hotel_ID = %s
+                        """,
+                        (hotel_id,)
+                    )
+                    room_types = cursor.fetchall()
+                except mysql.connector.Error:
+                    # Fall back to Room table if RoomCategory table doesn't exist or query fails
+                    cursor.execute(
+                        """
+                        SELECT Room_ID, Room_Type, Price_per_Night, Availability_status
+                        FROM Room 
+                        WHERE Room_Type LIKE %s AND Availability_status = 'Available'
+                        """,
+                        (f"%{hotel_data['hotel_name']}%",)
+                    )
+                    room_types = cursor.fetchall()
+            else:
+                # Try to get data directly from Room table
+                # Assume hotel_id is actually a Room_ID in this case
+                cursor.execute(
+                    """
+                    SELECT Room_ID, Room_Type, Price_per_Night, Availability_status
+                    FROM Room 
+                    WHERE Room_ID = %s AND Availability_status = 'Available'
+                    """,
+                    (hotel_id,)
+                )
+                room_types = cursor.fetchall()
+                
+                if room_types:
+                    # Extract hotel name from room type
+                    room_type_parts = room_types[0]['Room_Type'].split(' - ', 1)
+                    hotel_name = room_type_parts[0] if len(room_type_parts) > 1 else room_types[0]['Room_Type']
+                    hotel_name_label.configure(text=f"{hotel_name}")
+                    hotel_location_label.configure(text=f"📍 Location information not available")
+                else:
+                    messagebox.showerror("Error", "Hotel/Room not found")
+                    go_to_home()
+                    return
+        else:
+            # No Hotel table, get room data directly
             cursor.execute(
                 """
                 SELECT Room_ID, Room_Type, Price_per_Night, Availability_status
                 FROM Room 
-                WHERE Hotel_ID = %s AND Availability_status = 'Available'
+                WHERE Room_ID = %s AND Availability_status = 'Available'
                 """,
                 (hotel_id,)
             )
             room_types = cursor.fetchall()
             
-            # Store room prices for calculation
-            global room_prices
-            room_prices = {room['Room_Type']: room['Price_per_Night'] for room in room_types}
-            
-            # Format room types for dropdown
-            room_type_options = [f"{room['Room_Type']} - ${room['Price_per_Night']}/night" for room in room_types]
-            
-            if room_type_options:
-                room_type_dropdown.configure(values=room_type_options)
-                room_type_dropdown.set(room_type_options[0])
-                
-                # Set default values in summary
-                update_booking_summary()
+            if room_types:
+                # Extract hotel name from room type
+                room_type_parts = room_types[0]['Room_Type'].split(' - ', 1)
+                hotel_name = room_type_parts[0] if len(room_type_parts) > 1 else room_types[0]['Room_Type']
+                hotel_name_label.configure(text=f"{hotel_name}")
+                hotel_location_label.configure(text=f"📍 Location information not available")
             else:
-                room_type_dropdown.configure(values=["No rooms available"])
-                room_type_dropdown.set("No rooms available")
+                messagebox.showerror("Error", "Room not found")
+                go_to_home()
+                return
                 
+        # Store room prices for calculation
+        global room_prices
+        room_prices = {room['Room_Type']: room['Price_per_Night'] for room in room_types}
+        
+        # Format room types for dropdown
+        room_type_options = [f"{room['Room_Type']} - ${room['Price_per_Night']}/night" for room in room_types]
+        
+        if room_type_options:
+            room_type_dropdown.configure(values=room_type_options)
+            room_type_dropdown.set(room_type_options[0])
+            
+            # Set default values in summary
+            update_booking_summary()
         else:
-            messagebox.showerror("Error", "Hotel not found")
-            go_to_home()
+            room_type_dropdown.configure(values=["No rooms available"])
+            room_type_dropdown.set("No rooms available")
             
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", str(err))
+        print(f"Database Error in load_hotel_details: {err}")
+        go_to_home()
     finally:
         if 'connection' in locals() and connection.is_connected():
             cursor.close()
@@ -305,12 +366,44 @@ def confirm_booking():
         connection = connect_db()
         cursor = connection.cursor()
         
-        # Get room ID for the selected room type
-        cursor.execute(
-    "SELECT Room_ID FROM Room WHERE Room_Type = %s AND Availability_status = 'Available' LIMIT 1",
-    (room_type,)
-)
-        room_result = cursor.fetchone()
+        # Check if we're working with RoomCategory or Room table
+        cursor.execute("SHOW TABLES LIKE 'RoomCategory'")
+        roomcategory_exists = cursor.fetchone() is not None
+        
+        if roomcategory_exists:
+            # Try to get the room from RoomCategory first
+            cursor.execute(
+                """
+                SELECT Category_ID as Room_ID 
+                FROM RoomCategory 
+                WHERE category_name = %s AND Hotel_ID = %s LIMIT 1
+                """,
+                (room_type, hotel_id)
+            )
+            room_result = cursor.fetchone()
+            
+            # If not found, try the Room table
+            if not room_result:
+                cursor.execute(
+                    """
+                    SELECT Room_ID 
+                    FROM Room 
+                    WHERE Room_Type = %s AND Availability_status = 'Available' LIMIT 1
+                    """,
+                    (room_type,)
+                )
+                room_result = cursor.fetchone()
+        else:
+            # Get room ID from Room table
+            cursor.execute(
+                """
+                SELECT Room_ID 
+                FROM Room 
+                WHERE Room_Type = %s AND Availability_status = 'Available' LIMIT 1
+                """,
+                (room_type,)
+            )
+            room_result = cursor.fetchone()
         
         if not room_result:
             messagebox.showerror("Booking Error", "Selected room is no longer available")
@@ -318,18 +411,33 @@ def confirm_booking():
             
         room_id = room_result[0]
         
-        # Insert booking record
-        cursor.execute(
-            """
-            INSERT INTO Booking (User_ID, Room_ID, Check_IN_Date, Check_Out_Date, 
-                               Total_Cost, Booking_Status, Guests)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
-            (current_user['user_id'], room_id, check_in.strftime('%Y-%m-%d'), 
-             check_out.strftime('%Y-%m-%d'), total_price, 'Confirmed', guests_count)
-        )
+        # Check if Booking table has a Guests column
+        cursor.execute("SHOW COLUMNS FROM Booking LIKE 'Guests'")
+        has_guests_column = cursor.fetchone() is not None
         
-        # Update room availability
+        # Insert booking record with appropriate column set
+        if has_guests_column:
+            cursor.execute(
+                """
+                INSERT INTO Booking (User_ID, Room_ID, Check_IN_Date, Check_Out_Date, 
+                                  Total_Cost, Booking_Status, Guests)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (current_user['user_id'], room_id, check_in.strftime('%Y-%m-%d'), 
+                check_out.strftime('%Y-%m-%d'), total_price, 'Confirmed', guests_count)
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO Booking (User_ID, Room_ID, Check_IN_Date, Check_Out_Date, 
+                                  Total_Cost, Booking_Status)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (current_user['user_id'], room_id, check_in.strftime('%Y-%m-%d'), 
+                check_out.strftime('%Y-%m-%d'), total_price, 'Confirmed')
+            )
+        
+        # Update room availability in Room table
         cursor.execute(
             "UPDATE Room SET Availability_status = 'Booked' WHERE Room_ID = %s",
             (room_id,)
@@ -343,6 +451,7 @@ def confirm_booking():
         
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", str(err))
+        print(f"Database Error in confirm_booking: {err}")
     finally:
         if 'connection' in locals() and connection.is_connected():
             cursor.close()
