@@ -28,8 +28,8 @@ def setup_database():
         cursor = connection.cursor()
         
         # Create database if it doesn't exist
-        cursor.execute("CREATE DATABASE IF NOT EXISTS hotel_book")
-        cursor.execute("USE hotel_book")
+        cursor.execute("CREATE DATABASE IF NOT EXISTS BIS698M1530_GRP1")
+        cursor.execute("USE BIS698M1530_GRP1")
         
         # Create Users table
         cursor.execute("""
@@ -168,10 +168,10 @@ def connect_db():
     """Connect to the hotel_booking database"""
     try:
         return mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="new_password",
-            database="hotel_book"
+            host="141.209.241.57",
+        user="cheru4a",  # Replace with your MySQL username
+        password="mypass", 
+            database="BIS698M1530_GRP1"
         )
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", str(err))
