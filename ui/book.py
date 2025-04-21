@@ -307,7 +307,7 @@ def confirm_booking():
         
         # Get room ID for the selected room type
         cursor.execute(
-            "SELECT Room_ID FROM Room WHERE Room_Type = %s AND Availability_status = 'Available' AND Hotel_ID = %s LIMIT 1",
+            "SELECT Room_ID FROM Room WHERE Room_Type = %s AND Availability_status = 'Available' AND hotel_id = %s LIMIT 1",
             (room_type, hotel_id)
         )
         room_result = cursor.fetchone()
