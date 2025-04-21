@@ -415,7 +415,13 @@ def show_user_details(event=None):
     
     password_entry.delete(0, 'end')
     
-    # Update action buttons
+    # Update action buttons - show appropriate buttons for edit mode
+    create_btn.grid_forget()  # Hide create button
+    update_btn.grid(row=0, column=0, padx=(0, 10))
+    delete_btn.grid(row=0, column=1, padx=(0, 10))
+    clear_btn.grid(row=0, column=2)
+    
+    # Enable appropriate buttons
     update_btn.configure(state="normal")
     delete_btn.configure(state="normal")
     
@@ -461,13 +467,12 @@ def clear_user_form():
     address_entry.delete(0, 'end')
     password_entry.delete(0, 'end')
     
-    # Disable action buttons
-    update_btn.configure(state="disabled")
-    delete_btn.configure(state="disabled")
-    
     # Reset selected user
     global selected_user
     selected_user = None
+    
+    # Switch to create mode interface
+    new_user_mode()
 
 def hide_user_details():
     """Hide the user details section"""
@@ -475,13 +480,18 @@ def hide_user_details():
 
 def new_user_mode():
     """Switch to new user mode"""
-    clear_user_form()
+    # Hide user details section
     hide_user_details()
     
-    # Update form buttons
+    # Update buttons for create mode
+    update_btn.grid_forget()
+    delete_btn.grid_forget()
+    
+    create_btn.grid(row=0, column=0, padx=(0, 10))
+    clear_btn.grid(row=0, column=1)
+    
+    # Enable/disable appropriate buttons
     create_btn.configure(state="normal")
-    update_btn.configure(state="disabled")
-    delete_btn.configure(state="disabled")
     
     # Set focus to first name field
     first_name_entry.focus_set()
@@ -535,14 +545,28 @@ def search_users():
     # Update user count
     user_count_label.configure(text=f"Filtered Users: {len(filtered_users)}")
 
+# ----------------- Color Constants -----------------
+PRIMARY_COLOR = "#2C3E50"       # Dark blue for main elements
+SECONDARY_COLOR = "#3498DB"     # Lighter blue for accents
+SUCCESS_COLOR = "#28A745"       # Green for success actions
+SUCCESS_HOVER = "#218838"       # Darker green for hover
+DANGER_COLOR = "#DC3545"        # Red for dangerous actions
+DANGER_HOVER = "#C82333"        # Darker red for hover
+WARNING_COLOR = "#FFC107"       # Yellow for warnings
+INFO_COLOR = "#17A2B8"          # Teal for info
+LIGHT_COLOR = "#E9ECEF"         # Light gray for backgrounds
+DARK_COLOR = "#343A40"          # Dark for text
+GRAY_COLOR = "#6C757D"          # Medium gray for secondary text
+BORDER_COLOR = "#DEE2E6"        # Border color
+
 # ----------------- Initialize App -----------------
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
 app.title("Hotel Booking - Manage Users")
-app.geometry("1200x700")
-app.resizable(False, False)
+app.geometry("1200x750")
+app.minsize(1000, 700)  # Set minimum window size for responsiveness
 
 # Try to load admin session
 if not load_admin_session():
@@ -554,12 +578,27 @@ main_frame = ctk.CTkFrame(app, fg_color="white", corner_radius=0)
 main_frame.pack(expand=True, fill="both")
 
 # ----------------- Sidebar (Navigation) -----------------
-sidebar = ctk.CTkFrame(main_frame, fg_color="#2C3E50", width=200, corner_radius=0)
+sidebar = ctk.CTkFrame(main_frame, fg_color=PRIMARY_COLOR, width=220, corner_radius=0)
 sidebar.pack(side="left", fill="y")
 sidebar.pack_propagate(False)  # Prevent the frame from shrinking
 
 # Header with logo
-ctk.CTkLabel(sidebar, text="🏨 Hotel Booking", font=("Arial", 18, "bold"), text_color="white").pack(pady=(30, 20))
+logo_frame = ctk.CTkFrame(sidebar, fg_color="transparent", height=100)
+logo_frame.pack(fill="x", pady=(20, 10))
+
+logo_label = ctk.CTkLabel(
+    logo_frame, 
+    text="H", 
+    font=("Arial", 32, "bold"), 
+    text_color="white",
+    fg_color=SECONDARY_COLOR,
+    corner_radius=12,
+    width=60,
+    height=60
+)
+logo_label.place(relx=0.5, rely=0.5, anchor="center")
+
+ctk.CTkLabel(sidebar, text="Hotel Booking", font=("Arial", 18, "bold"), text_color="white").pack(pady=(0, 20))
 
 # Navigation buttons with icons
 nav_buttons = [
@@ -574,15 +613,20 @@ for btn_text, btn_command in nav_buttons:
     btn = ctk.CTkButton(sidebar, text=btn_text, font=("Arial", 14), 
                       fg_color="#34495E" if is_active else "transparent", 
                       hover_color="#34495E",
-                      anchor="w", height=40, width=180, 
+                      anchor="w", height=45, width=200, 
                       command=btn_command)
     btn.pack(pady=5, padx=10)
 
 # Welcome message with admin name if available
 if current_admin:
+    admin_frame = ctk.CTkFrame(sidebar, fg_color="transparent", height=80)
+    admin_frame.pack(side="bottom", fill="x", pady=20, padx=10)
+    
     admin_name = current_admin['AdminName']
-    ctk.CTkLabel(sidebar, text=f"Welcome, {admin_name}", 
-               font=("Arial", 12), text_color="white").pack(pady=(50, 10))
+    ctk.CTkLabel(admin_frame, text=f"Welcome,", 
+               font=("Arial", 12), text_color="#8395a7").pack(anchor="w")
+    ctk.CTkLabel(admin_frame, text=f"{admin_name}", 
+               font=("Arial", 14, "bold"), text_color="white").pack(anchor="w")
 
 # ----------------- Content Area -----------------
 content_frame = ctk.CTkFrame(main_frame, fg_color="white", corner_radius=0)
@@ -593,223 +637,295 @@ header_frame = ctk.CTkFrame(content_frame, fg_color="white", height=60)
 header_frame.pack(fill="x", padx=30, pady=(30, 10))
 
 ctk.CTkLabel(header_frame, text="Manage Users", 
-           font=("Arial", 28, "bold"), text_color="#2C3E50").pack(side="left")
+           font=("Arial", 28, "bold"), text_color=PRIMARY_COLOR).pack(side="left")
 
 # New User and Search
 action_frame = ctk.CTkFrame(header_frame, fg_color="white")
 action_frame.pack(side="right")
 
 # New user button
-new_user_btn = ctk.CTkButton(action_frame, text="+ New User", font=("Arial", 12), 
-                           fg_color="#28A745", hover_color="#218838",
-                           command=new_user_mode, width=100, height=30)
-new_user_btn.pack(side="left", padx=(0, 10))
+new_user_btn = ctk.CTkButton(action_frame, text="+ New User", font=("Arial", 12, "bold"), 
+                           fg_color=SUCCESS_COLOR, hover_color=SUCCESS_HOVER,
+                           command=new_user_mode, width=120, height=35, corner_radius=8)
+new_user_btn.pack(side="left", padx=(0, 15))
 
-# Search field
-search_entry = ctk.CTkEntry(action_frame, width=200, placeholder_text="Search users...")
-search_entry.pack(side="left", padx=(0, 5))
+# Search with improved styling
+search_frame = ctk.CTkFrame(action_frame, fg_color=LIGHT_COLOR, corner_radius=8, height=35)
+search_frame.pack(side="left", fill="y")
 
-search_btn = ctk.CTkButton(action_frame, text="Search", font=("Arial", 12), 
-                         fg_color="#0F2D52", hover_color="#1E4D88",
-                         command=search_users, width=80, height=30)
-search_btn.pack(side="left")
+search_entry = ctk.CTkEntry(search_frame, width=200, placeholder_text="Search users...", 
+                          border_width=0, fg_color=LIGHT_COLOR, height=35)
+search_entry.pack(side="left", padx=(10, 0))
+
+search_btn = ctk.CTkButton(search_frame, text="🔍", font=("Arial", 12, "bold"), 
+                         fg_color=LIGHT_COLOR, text_color=DARK_COLOR, hover_color=BORDER_COLOR,
+                         width=35, height=35, corner_radius=0, command=search_users)
+search_btn.pack(side="right")
 
 # ----------------- User Form Section -----------------
 form_frame = ctk.CTkFrame(content_frame, fg_color="white", border_width=1, 
-                        border_color="#E5E5E5", corner_radius=10)
+                        border_color=BORDER_COLOR, corner_radius=10)
 form_frame.pack(fill="x", padx=30, pady=(0, 20))
 
 # Form header
-form_header = ctk.CTkFrame(form_frame, fg_color="white", height=40)
-form_header.pack(fill="x", padx=20, pady=10)
+form_header = ctk.CTkFrame(form_frame, fg_color=LIGHT_COLOR, height=50, corner_radius=0)
+form_header.pack(fill="x")
 
 ctk.CTkLabel(form_header, text="User Information", 
-           font=("Arial", 16, "bold"), text_color="#2C3E50").pack(side="left")
+           font=("Arial", 16, "bold"), text_color=PRIMARY_COLOR).pack(side="left", padx=20, pady=10)
 
 # Form fields
 form_fields = ctk.CTkFrame(form_frame, fg_color="white")
-form_fields.pack(fill="x", padx=20, pady=(0, 20))
+form_fields.pack(fill="x", padx=20, pady=(20, 20))
 
-# Create two columns
-form_left = ctk.CTkFrame(form_fields, fg_color="white")
-form_left.pack(side="left", fill="both", expand=True, padx=(0, 10))
-
-form_right = ctk.CTkFrame(form_fields, fg_color="white")
-form_right.pack(side="right", fill="both", expand=True, padx=(10, 0))
+# Create two columns with grid layout for better responsiveness
+form_fields.columnconfigure(0, weight=1)
+form_fields.columnconfigure(1, weight=1)
 
 # Left column - First Name, Last Name, Email
-ctk.CTkLabel(form_left, text="First Name *", font=("Arial", 12)).pack(anchor="w", pady=(0, 5))
-first_name_entry = ctk.CTkEntry(form_left, width=300, height=35)
-first_name_entry.pack(anchor="w", pady=(0, 10))
+left_label_frame = ctk.CTkFrame(form_fields, fg_color="transparent")
+left_label_frame.grid(row=0, column=0, sticky="ew", padx=(0, 10), pady=(0, 15))
 
-ctk.CTkLabel(form_left, text="Last Name *", font=("Arial", 12)).pack(anchor="w", pady=(0, 5))
-last_name_entry = ctk.CTkEntry(form_left, width=300, height=35)
-last_name_entry.pack(anchor="w", pady=(0, 10))
+ctk.CTkLabel(left_label_frame, text="First Name *", font=("Arial", 12), anchor="w").pack(fill="x")
+first_name_entry = ctk.CTkEntry(form_fields, height=35, placeholder_text="Enter first name")
+first_name_entry.grid(row=1, column=0, sticky="ew", padx=(0, 10), pady=(0, 15))
 
-ctk.CTkLabel(form_left, text="Email *", font=("Arial", 12)).pack(anchor="w", pady=(0, 5))
-email_entry = ctk.CTkEntry(form_left, width=300, height=35)
-email_entry.pack(anchor="w", pady=(0, 10))
+ctk.CTkLabel(form_fields, text="Last Name *", font=("Arial", 12), anchor="w").grid(row=2, column=0, sticky="ew", padx=(0, 10), pady=(0, 5))
+last_name_entry = ctk.CTkEntry(form_fields, height=35, placeholder_text="Enter last name")
+last_name_entry.grid(row=3, column=0, sticky="ew", padx=(0, 10), pady=(0, 15))
+
+ctk.CTkLabel(form_fields, text="Email *", font=("Arial", 12), anchor="w").grid(row=4, column=0, sticky="ew", padx=(0, 10), pady=(0, 5))
+email_entry = ctk.CTkEntry(form_fields, height=35, placeholder_text="Enter email address")
+email_entry.grid(row=5, column=0, sticky="ew", padx=(0, 10), pady=(0, 15))
 
 # Right column - Phone, Address, Password
-ctk.CTkLabel(form_right, text="Phone", font=("Arial", 12)).pack(anchor="w", pady=(0, 5))
-phone_entry = ctk.CTkEntry(form_right, width=300, height=35)
-phone_entry.pack(anchor="w", pady=(0, 10))
+ctk.CTkLabel(form_fields, text="Phone", font=("Arial", 12), anchor="w").grid(row=0, column=1, sticky="ew", padx=(10, 0), pady=(0, 5))
+phone_entry = ctk.CTkEntry(form_fields, height=35, placeholder_text="Enter phone number")
+phone_entry.grid(row=1, column=1, sticky="ew", padx=(10, 0), pady=(0, 15))
 
-ctk.CTkLabel(form_right, text="Address", font=("Arial", 12)).pack(anchor="w", pady=(0, 5))
-address_entry = ctk.CTkEntry(form_right, width=300, height=35)
-address_entry.pack(anchor="w", pady=(0, 10))
+ctk.CTkLabel(form_fields, text="Address", font=("Arial", 12), anchor="w").grid(row=2, column=1, sticky="ew", padx=(10, 0), pady=(0, 5))
+address_entry = ctk.CTkEntry(form_fields, height=35, placeholder_text="Enter address")
+address_entry.grid(row=3, column=1, sticky="ew", padx=(10, 0), pady=(0, 15))
 
-ctk.CTkLabel(form_right, text="Password" + " *" if not selected_user else "", font=("Arial", 12)).pack(anchor="w", pady=(0, 5))
-password_entry = ctk.CTkEntry(form_right, width=300, height=35, show="•")
-password_entry.pack(anchor="w", pady=(0, 10))
+ctk.CTkLabel(form_fields, text="Password *", font=("Arial", 12), anchor="w").grid(row=4, column=1, sticky="ew", padx=(10, 0), pady=(0, 5))
+password_entry = ctk.CTkEntry(form_fields, height=35, show="•", placeholder_text="Enter password")
+password_entry.grid(row=5, column=1, sticky="ew", padx=(10, 0), pady=(0, 15))
 
 # Form buttons
-buttons_frame = ctk.CTkFrame(form_fields, fg_color="white")
-buttons_frame.pack(fill="x", pady=(10, 0))
+buttons_frame = ctk.CTkFrame(form_fields, fg_color="transparent")
+buttons_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(10, 0))
 
-create_btn = ctk.CTkButton(buttons_frame, text="Create User", font=("Arial", 12), 
-                         fg_color="#28A745", hover_color="#218838",
-                         command=create_user, width=120, height=35)
-create_btn.pack(side="left", padx=(0, 5))
+# Center-align the button container
+buttons_frame.columnconfigure(0, weight=1)
+buttons_frame.columnconfigure(1, weight=1)
+buttons_frame.columnconfigure(2, weight=1)
+buttons_frame.columnconfigure(3, weight=1)
 
-update_btn = ctk.CTkButton(buttons_frame, text="Update User", font=("Arial", 12), 
-                         fg_color="#0F2D52", hover_color="#1E4D88",
-                         command=update_user, width=120, height=35, state="disabled")
-update_btn.pack(side="left", padx=(0, 5))
+# Button container
+button_container = ctk.CTkFrame(buttons_frame, fg_color="transparent")
+button_container.grid(row=0, column=1, columnspan=2)
 
-delete_btn = ctk.CTkButton(buttons_frame, text="Delete User", font=("Arial", 12), 
-                         fg_color="#DC3545", hover_color="#C82333",
-                         command=delete_user, width=120, height=35, state="disabled")
-delete_btn.pack(side="left")
+# Use grid instead of pack for better control
+create_btn = ctk.CTkButton(button_container, text="Create User", font=("Arial", 13, "bold"), 
+                         fg_color=SUCCESS_COLOR, hover_color=SUCCESS_HOVER,
+                         command=create_user, width=140, height=40, corner_radius=8)
 
-# Clear button (right aligned)
-ctk.CTkButton(buttons_frame, text="Clear Form", font=("Arial", 12), 
-            fg_color="#6C757D", hover_color="#5A6268",
-            command=clear_user_form, width=120, height=35).pack(side="right")
+update_btn = ctk.CTkButton(button_container, text="Update User", font=("Arial", 13, "bold"), 
+                         fg_color=PRIMARY_COLOR, hover_color="#1E4D88",
+                         command=update_user, width=140, height=40, corner_radius=8, state="disabled")
+
+delete_btn = ctk.CTkButton(button_container, text="Delete User", font=("Arial", 13, "bold"), 
+                         fg_color=DANGER_COLOR, hover_color=DANGER_HOVER,
+                         command=delete_user, width=140, height=40, corner_radius=8, state="disabled")
+
+clear_btn = ctk.CTkButton(button_container, text="Clear Form", font=("Arial", 13, "bold"), 
+                        fg_color=GRAY_COLOR, hover_color="#5A6268",
+                        command=clear_user_form, width=140, height=40, corner_radius=8)
+
+# Initially show only the create and clear buttons (new user mode)
+create_btn.grid(row=0, column=0, padx=(0, 10))
+clear_btn.grid(row=0, column=1)
 
 # ----------------- User Table Section -----------------
 table_frame = ctk.CTkFrame(content_frame, fg_color="white", border_width=1, 
-                        border_color="#E5E5E5", corner_radius=10)
-table_frame.pack(fill="x", padx=30, pady=(0, 20))
+                        border_color=BORDER_COLOR, corner_radius=10)
+table_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
 
 # Table header
-table_header = ctk.CTkFrame(table_frame, fg_color="white", height=40)
-table_header.pack(fill="x", padx=20, pady=10)
+table_header = ctk.CTkFrame(table_frame, fg_color=LIGHT_COLOR, height=50, corner_radius=0)
+table_header.pack(fill="x")
 
 ctk.CTkLabel(table_header, text="User List", 
-           font=("Arial", 16, "bold"), text_color="#2C3E50").pack(side="left")
+           font=("Arial", 16, "bold"), text_color=PRIMARY_COLOR).pack(side="left", padx=20, pady=10)
 
 # User count
 user_count_label = ctk.CTkLabel(table_header, text="Total Users: 0", font=("Arial", 12))
-user_count_label.pack(side="right")
+user_count_label.pack(side="right", padx=20, pady=10)
+
+# Create table container with fixed height
+table_container = ctk.CTkFrame(table_frame, fg_color="white")
+table_container.pack(fill="both", expand=True, padx=20, pady=(10, 20))
+
+# Style configuration for the treeview
+style = ttk.Style()
+style.configure("Treeview", 
+                background="#ffffff", 
+                foreground="#333333", 
+                rowheight=40, 
+                fieldbackground="#ffffff")
+style.configure("Treeview.Heading", 
+                background="#f8f9fa", 
+                foreground="#2C3E50", 
+                font=('Arial', 11, 'bold'))
+style.map('Treeview', background=[('selected', '#3498DB')])
 
 # Create treeview for users
 columns = ('ID', 'Name', 'Email', 'Phone', 'Address', 'Bookings')
-user_table = ttk.Treeview(table_frame, columns=columns, show='headings', height=8)
+user_table = ttk.Treeview(table_container, columns=columns, show='headings', height=8)
 
 # Configure column headings
 for col in columns:
     user_table.heading(col, text=col)
     if col == 'ID':
-        user_table.column(col, width=50, anchor='center')
+        user_table.column(col, width=50, anchor='center', minwidth=50)
     elif col == 'Bookings':
-        user_table.column(col, width=80, anchor='center')
+        user_table.column(col, width=80, anchor='center', minwidth=80)
     elif col == 'Phone':
-        user_table.column(col, width=120, anchor='w')
+        user_table.column(col, width=120, anchor='w', minwidth=120)
     elif col == 'Email':
-        user_table.column(col, width=200, anchor='w')
+        user_table.column(col, width=200, anchor='w', minwidth=150)
     elif col == 'Address':
-        user_table.column(col, width=200, anchor='w')
+        user_table.column(col, width=200, anchor='w', minwidth=150)
     else:
-        user_table.column(col, width=150, anchor='w')
+        user_table.column(col, width=150, anchor='w', minwidth=100)
 
 # Add scrollbar
-table_scroll = ttk.Scrollbar(table_frame, orient='vertical', command=user_table.yview)
-user_table.configure(yscrollcommand=table_scroll.set)
-table_scroll.pack(side='right', fill='y')
-user_table.pack(expand=True, fill='both', padx=20, pady=(0, 20))
+table_scroll_y = ttk.Scrollbar(table_container, orient='vertical', command=user_table.yview)
+table_scroll_x = ttk.Scrollbar(table_container, orient='horizontal', command=user_table.xview)
+user_table.configure(yscrollcommand=table_scroll_y.set, xscrollcommand=table_scroll_x.set)
+
+# Pack the scrollbars and table
+table_scroll_y.pack(side='right', fill='y')
+table_scroll_x.pack(side='bottom', fill='x')
+user_table.pack(expand=True, fill='both')
 
 # Bind click event to show user details
 user_table.bind('<<TreeviewSelect>>', show_user_details)
 
 # ----------------- User Details Section -----------------
 details_frame = ctk.CTkFrame(content_frame, fg_color="white", border_width=1, 
-                          border_color="#E5E5E5", corner_radius=10, height=250)
+                          border_color=BORDER_COLOR, corner_radius=10)
 # Initially hidden - will be shown when a user is selected
 
 # Details header
-details_header = ctk.CTkFrame(details_frame, fg_color="white", height=40)
-details_header.pack(fill="x", padx=20, pady=10)
+details_header = ctk.CTkFrame(details_frame, fg_color=LIGHT_COLOR, height=50, corner_radius=0)
+details_header.pack(fill="x")
 
 details_user_id = ctk.CTkLabel(details_header, text="User #", 
-                            font=("Arial", 16, "bold"), text_color="#2C3E50")
-details_user_id.pack(side="left")
+                            font=("Arial", 16, "bold"), text_color=PRIMARY_COLOR)
+details_user_id.pack(side="left", padx=20, pady=10)
 
 # Details content
 details_content = ctk.CTkFrame(details_frame, fg_color="white")
-details_content.pack(fill="x", padx=20, pady=(0, 10))
+details_content.pack(fill="x", padx=20, pady=(15, 15))
 
 # User details
 details_name = ctk.CTkLabel(details_content, text="Full Name", 
-                          font=("Arial", 14, "bold"), text_color="#2C3E50")
+                          font=("Arial", 16, "bold"), text_color=PRIMARY_COLOR)
 details_name.pack(anchor="w", pady=(0, 5))
 
 details_email = ctk.CTkLabel(details_content, text="Email", 
-                           font=("Arial", 12), text_color="#6C757D")
-details_email.pack(anchor="w", pady=(0, 5))
+                           font=("Arial", 13), text_color=GRAY_COLOR)
+details_email.pack(anchor="w", pady=(0, 10))
 
-details_phone = ctk.CTkLabel(details_content, text="Phone: ", 
-                           font=("Arial", 12), text_color="#6C757D")
-details_phone.pack(anchor="w", pady=(0, 5))
+details_info_frame = ctk.CTkFrame(details_content, fg_color="white")
+details_info_frame.pack(fill="x", pady=(0, 15))
+details_info_frame.columnconfigure(0, weight=1)
+details_info_frame.columnconfigure(1, weight=1)
 
-details_address = ctk.CTkLabel(details_content, text="Address: ", 
-                             font=("Arial", 12), text_color="#6C757D")
-details_address.pack(anchor="w", pady=(0, 10))
+details_phone = ctk.CTkLabel(details_info_frame, text="Phone: ", 
+                           font=("Arial", 13), text_color=GRAY_COLOR)
+details_phone.grid(row=0, column=0, sticky="w", pady=(0, 5))
 
-# User stats
-stats_frame = ctk.CTkFrame(details_content, fg_color="white")
-stats_frame.pack(fill="x")
+details_address = ctk.CTkLabel(details_info_frame, text="Address: ", 
+                             font=("Arial", 13), text_color=GRAY_COLOR)
+details_address.grid(row=1, column=0, sticky="w", pady=(0, 5))
+
+# User stats in a visually appealing card format
+stats_frame = ctk.CTkFrame(details_content, fg_color=LIGHT_COLOR, corner_radius=8)
+stats_frame.pack(fill="x", pady=(0, 15))
+
+stats_frame.columnconfigure(0, weight=1)
+stats_frame.columnconfigure(1, weight=1)
+
+# Booking stats
+stats_icon1 = ctk.CTkLabel(stats_frame, text="🗓️", font=("Arial", 20))
+stats_icon1.grid(row=0, column=0, padx=(15, 5), pady=15, sticky="e")
 
 details_bookings = ctk.CTkLabel(stats_frame, text="Total Bookings: 0", 
-                              font=("Arial", 12, "bold"), text_color="#2C3E50")
-details_bookings.pack(side="left", padx=(0, 20))
+                              font=("Arial", 13, "bold"), text_color=PRIMARY_COLOR)
+details_bookings.grid(row=0, column=1, padx=(0, 15), pady=15, sticky="w")
+
+# Total spent stats 
+stats_icon2 = ctk.CTkLabel(stats_frame, text="💰", font=("Arial", 20))
+stats_icon2.grid(row=0, column=2, padx=(15, 5), pady=15, sticky="e")
 
 details_spent = ctk.CTkLabel(stats_frame, text="Total Spent: $0", 
-                           font=("Arial", 12, "bold"), text_color="#2C3E50")
-details_spent.pack(side="left")
+                           font=("Arial", 13, "bold"), text_color=PRIMARY_COLOR)
+details_spent.grid(row=0, column=3, padx=(0, 15), pady=15, sticky="w")
 
-# Recent bookings section
-bookings_label = ctk.CTkLabel(details_content, text="Recent Bookings", 
-                            font=("Arial", 12, "bold"), text_color="#2C3E50")
-bookings_label.pack(anchor="w", pady=(20, 5))
+# Recent bookings section with better styling
+bookings_header = ctk.CTkFrame(details_content, fg_color="white")
+bookings_header.pack(fill="x", pady=(5, 10))
 
-# Create mini-treeview for recent bookings
+bookings_label = ctk.CTkLabel(bookings_header, text="Recent Bookings", 
+                            font=("Arial", 14, "bold"), text_color=PRIMARY_COLOR)
+bookings_label.pack(side="left")
+
+bookings_container = ctk.CTkFrame(details_content, fg_color="white")
+bookings_container.pack(fill="x", pady=(0, 10))
+
+# Create mini-treeview for recent bookings with better styling
 booking_columns = ('Booking ID', 'Room Type', 'Check-in', 'Check-out', 'Amount', 'Status')
-bookings_table = ttk.Treeview(details_content, columns=booking_columns, show='headings', height=3)
+bookings_table = ttk.Treeview(bookings_container, columns=booking_columns, show='headings', height=4)
 
-# Configure column headings
+# Configure column headings for bookings table
 for col in booking_columns:
     bookings_table.heading(col, text=col)
     if col == 'Booking ID':
-        bookings_table.column(col, width=80, anchor='center')
+        bookings_table.column(col, width=80, anchor='center', minwidth=80)
     elif col in ('Check-in', 'Check-out'):
-        bookings_table.column(col, width=100, anchor='center')
+        bookings_table.column(col, width=100, anchor='center', minwidth=100)
     elif col == 'Amount':
-        bookings_table.column(col, width=80, anchor='e')
+        bookings_table.column(col, width=80, anchor='e', minwidth=80)
     elif col == 'Status':
-        bookings_table.column(col, width=100, anchor='center')
+        bookings_table.column(col, width=100, anchor='center', minwidth=100)
     else:
-        bookings_table.column(col, width=150, anchor='w')
+        bookings_table.column(col, width=150, anchor='w', minwidth=150)
 
 # Configure tags for status colors
 bookings_table.tag_configure('confirmed', background='#d4edda')
 bookings_table.tag_configure('pending', background='#fff3cd')
 bookings_table.tag_configure('cancelled', background='#f8d7da')
 
-bookings_table.pack(fill="x", pady=(0, 10))
+# Add scrollbars for bookings table
+bookings_scroll_y = ttk.Scrollbar(bookings_container, orient='vertical', command=bookings_table.yview)
+bookings_scroll_x = ttk.Scrollbar(bookings_container, orient='horizontal', command=bookings_table.xview)
+bookings_table.configure(yscrollcommand=bookings_scroll_y.set, xscrollcommand=bookings_scroll_x.set)
+
+# Pack the scrollbars and table
+bookings_scroll_y.pack(side='right', fill='y')
+bookings_scroll_x.pack(side='bottom', fill='x')
+bookings_table.pack(fill="x")
+
+# Attach a keyboard shortcut to search (Enter key)
+search_entry.bind("<Return>", lambda event: search_users())
 
 # Populate the user table
 populate_user_table()
+
+# Initialize in "new user" mode
+new_user_mode()
 
 # Run the application
 if __name__ == "__main__":
