@@ -4,6 +4,7 @@ import mysql.connector
 import hashlib
 import subprocess
 import sys
+import os
 
 # ------------------- Database Connection -------------------
 def connect_db():
@@ -80,6 +81,15 @@ def open_login_page(event=None):
     except Exception as e:
         messagebox.showerror("Error", f"Unable to open login page: {e}")
 
+# ----------------- Color Constants -----------------
+PRIMARY_COLOR = "#2C3E50"      # Dark blue for main elements
+SECONDARY_COLOR = "#3498DB"    # Lighter blue for accents
+HOVER_COLOR = "#1E88E5"        # Hover state color
+TEXT_COLOR = "#333333"         # Dark gray for text
+LIGHT_TEXT = "#7F8C8D"         # Light gray for secondary text
+BORDER_COLOR = "#E0E0E0"       # Light gray for borders
+BG_COLOR = "#FFFFFF"           # White background
+
 # ----------------- Setup -----------------
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -90,11 +100,11 @@ app.geometry("1000x800")
 app.resizable(False, False)
 
 # ----------------- Main Frame -----------------
-main_frame = ctk.CTkFrame(app, fg_color="white", corner_radius=0)
+main_frame = ctk.CTkFrame(app, fg_color=BG_COLOR, corner_radius=0)
 main_frame.pack(expand=True, fill="both")
 
 # ----------------- Left Frame (Illustration) -----------------
-left_frame = ctk.CTkFrame(main_frame, fg_color="#3A546E", width=500, corner_radius=0)
+left_frame = ctk.CTkFrame(main_frame, fg_color=PRIMARY_COLOR, width=500, corner_radius=0)
 left_frame.pack(side="left", fill="both", expand=True)
 
 # Load and display the PNG image
@@ -102,22 +112,30 @@ try:
     from PIL import Image, ImageTk
     
     # Create a frame for the image
-    image_frame = ctk.CTkFrame(left_frame, fg_color="#3A546E")
-    image_frame.pack(fill="both", expand=True)
+    image_frame = ctk.CTkFrame(left_frame, fg_color=PRIMARY_COLOR)
+    image_frame.pack(fill="both", expand=True, padx=30, pady=30)
     
     # Create a label to hold the image
-    image_label = ctk.CTkLabel(image_frame, text="", fg_color="#3A546E")
+    image_label = ctk.CTkLabel(image_frame, text="", fg_color=PRIMARY_COLOR)
     image_label.pack(fill="both", expand=True)
     
     try:
-        # Replace 'city_image.png' with the actual name of your PNG file
-        image_path = "city_hotel.png"  # Use the same image as the login page
+        # Path to hotel image
+        image_path = "city_hotel.png"
+        
+        # Check if image exists, if not create a resources directory and search there
+        if not os.path.exists(image_path):
+            resources_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
+            if os.path.exists(resources_dir):
+                potential_image = os.path.join(resources_dir, "city_hotel.png")
+                if os.path.exists(potential_image):
+                    image_path = potential_image
         
         # Load and resize the image
         hotel_image = Image.open(image_path)
         
         # Get the dimensions of the frame
-        width, height = 400, 300
+        width, height = 420, 320
         
         # Resize the image while maintaining aspect ratio
         hotel_image = hotel_image.resize((width, height), Image.LANCZOS)
@@ -134,71 +152,270 @@ try:
     except Exception as e:
         print(f"Error loading image: {e}")
         # Fallback text if image can't be loaded
-        image_label.configure(text="Hotel Image Not Found\n\nPlease place your PNG file in the same directory\nand update the image path in the code.", 
-                              font=("Arial", 14), text_color="white")
+        image_label.configure(
+            text="Hotel Image Not Found", 
+            font=("Montserrat", 18, "bold"), 
+            text_color="white"
+        )
+        
 except ImportError:
     # Fallback if PIL is not installed
-    error_label = ctk.CTkLabel(left_frame, text="PIL module not found\nPlease install PIL/Pillow with:\npip install Pillow", 
-                             font=("Arial", 14), text_color="white")
+    error_label = ctk.CTkLabel(
+        left_frame, 
+        text="PIL module not found\nPlease install PIL/Pillow with:\npip install Pillow", 
+        font=("Arial", 14), 
+        text_color="white"
+    )
     error_label.pack(pady=300)
 
 # ----------------- Right Frame (Sign Up Form) -----------------
-right_frame = ctk.CTkFrame(main_frame, fg_color="white", corner_radius=0)
+right_frame = ctk.CTkFrame(main_frame, fg_color=BG_COLOR, corner_radius=0)
 right_frame.pack(side="right", fill="both", expand=True)
 
 # Content Container (to center the form)
-content_frame = ctk.CTkFrame(right_frame, fg_color="white", width=400)
-content_frame.pack(expand=True, fill="both", padx=50)
+content_frame = ctk.CTkFrame(right_frame, fg_color=BG_COLOR, width=400)
+content_frame.pack(expand=True, fill="both", padx=40)
 
-# Hotel Icon and Title
-ctk.CTkLabel(content_frame, text="🏨", font=("Arial", 30)).pack(pady=(30, 0))
-ctk.CTkLabel(content_frame, text="Hotel Booking", font=("Arial", 30, "bold")).pack(pady=(0, 5))
-ctk.CTkLabel(content_frame, text="Create a New Account", font=("Arial", 20)).pack(pady=(0, 20))
+# Hotel Logo and Title
+logo_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=60)
+logo_frame.pack(pady=(50, 0))
 
-# Full Name
-ctk.CTkLabel(content_frame, text="👤 Full Name", font=("Arial", 14), anchor="center").pack()
-fullname_entry = ctk.CTkEntry(content_frame, width=400, height=40, placeholder_text="Enter your full name")
-fullname_entry.pack(pady=(5, 15))
+# Hotel logo using a proper icon style instead of emoji
+logo_label = ctk.CTkLabel(
+    logo_frame, 
+    text="H", 
+    font=("Arial", 28, "bold"), 
+    text_color="white",
+    fg_color=PRIMARY_COLOR,
+    corner_radius=8,
+    width=50,
+    height=50
+)
+logo_label.pack()
 
-# Email
-ctk.CTkLabel(content_frame, text="✉️ Email", font=("Arial", 14), anchor="center").pack()
-email_entry = ctk.CTkEntry(content_frame, width=400, height=40, placeholder_text="Enter your email")
-email_entry.pack(pady=(5, 15))
+ctk.CTkLabel(
+    content_frame, 
+    text="Hotel Booking", 
+    font=("Arial", 24, "bold"),
+    text_color=PRIMARY_COLOR
+).pack(pady=(10, 0))
 
-# Phone Number
-ctk.CTkLabel(content_frame, text="📞 Phone Number", font=("Arial", 14), anchor="center").pack()
-phone_entry = ctk.CTkEntry(content_frame, width=400, height=40, placeholder_text="Enter your phone number")
-phone_entry.pack(pady=(5, 15))
+ctk.CTkLabel(
+    content_frame, 
+    text="Create a New Account", 
+    font=("Arial", 16),
+    text_color=LIGHT_TEXT
+).pack(pady=(5, 25))
 
-# Password
-ctk.CTkLabel(content_frame, text="🔒 Password", font=("Arial", 14), anchor="center").pack()
-password_entry = ctk.CTkEntry(content_frame, width=400, height=40, show="•", placeholder_text="Enter your password")
-password_entry.pack(pady=(5, 15))
+# Form fields with icon indicators
+# Full Name Field
+name_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
+name_frame.pack(fill="x", pady=(0, 5))
 
-# Confirm Password
-ctk.CTkLabel(content_frame, text="🔒 Confirm Password", font=("Arial", 14), anchor="center").pack()
-confirm_password_entry = ctk.CTkEntry(content_frame, width=400, height=40, show="•", placeholder_text="Confirm your password")
-confirm_password_entry.pack(pady=(5, 15))
+person_icon = ctk.CTkLabel(
+    name_frame, 
+    text="👤", # You can replace this with an actual icon if needed
+    font=("Arial", 14),
+    width=20,
+    text_color=LIGHT_TEXT
+)
+person_icon.pack(side="left")
 
-# Terms & Conditions
+ctk.CTkLabel(
+    name_frame, 
+    text="Full Name", 
+    font=("Arial", 14),
+    anchor="w",
+    text_color=TEXT_COLOR
+).pack(side="left", padx=(5, 0))
+
+fullname_entry = ctk.CTkEntry(
+    content_frame, 
+    width=400, 
+    height=40, 
+    placeholder_text="Enter your full name",
+    border_color=BORDER_COLOR,
+    corner_radius=5
+)
+fullname_entry.pack(pady=(0, 15))
+
+# Email Field
+email_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
+email_frame.pack(fill="x", pady=(0, 5))
+
+email_icon = ctk.CTkLabel(
+    email_frame, 
+    text="✉️", # You can replace this with an actual icon if needed
+    font=("Arial", 14),
+    width=20,
+    text_color=LIGHT_TEXT
+)
+email_icon.pack(side="left")
+
+ctk.CTkLabel(
+    email_frame, 
+    text="Email", 
+    font=("Arial", 14),
+    anchor="w",
+    text_color=TEXT_COLOR
+).pack(side="left", padx=(5, 0))
+
+email_entry = ctk.CTkEntry(
+    content_frame, 
+    width=400, 
+    height=40, 
+    placeholder_text="Enter your email",
+    border_color=BORDER_COLOR,
+    corner_radius=5
+)
+email_entry.pack(pady=(0, 15))
+
+# Phone Number Field
+phone_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
+phone_frame.pack(fill="x", pady=(0, 5))
+
+phone_icon = ctk.CTkLabel(
+    phone_frame, 
+    text="📞", # You can replace this with an actual icon if needed
+    font=("Arial", 14),
+    width=20,
+    text_color=LIGHT_TEXT
+)
+phone_icon.pack(side="left")
+
+ctk.CTkLabel(
+    phone_frame, 
+    text="Phone Number", 
+    font=("Arial", 14),
+    anchor="w",
+    text_color=TEXT_COLOR
+).pack(side="left", padx=(5, 0))
+
+phone_entry = ctk.CTkEntry(
+    content_frame, 
+    width=400, 
+    height=40, 
+    placeholder_text="Enter your phone number",
+    border_color=BORDER_COLOR,
+    corner_radius=5
+)
+phone_entry.pack(pady=(0, 15))
+
+# Password Field
+password_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
+password_frame.pack(fill="x", pady=(0, 5))
+
+password_icon = ctk.CTkLabel(
+    password_frame, 
+    text="🔒", # You can replace this with an actual icon if needed
+    font=("Arial", 14),
+    width=20,
+    text_color=LIGHT_TEXT
+)
+password_icon.pack(side="left")
+
+ctk.CTkLabel(
+    password_frame, 
+    text="Password", 
+    font=("Arial", 14),
+    anchor="w",
+    text_color=TEXT_COLOR
+).pack(side="left", padx=(5, 0))
+
+password_entry = ctk.CTkEntry(
+    content_frame, 
+    width=400, 
+    height=40, 
+    show="•", 
+    placeholder_text="Enter your password",
+    border_color=BORDER_COLOR,
+    corner_radius=5
+)
+password_entry.pack(pady=(0, 15))
+
+# Confirm Password Field
+confirm_password_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
+confirm_password_frame.pack(fill="x", pady=(0, 5))
+
+confirm_icon = ctk.CTkLabel(
+    confirm_password_frame, 
+    text="🔒", # You can replace this with an actual icon if needed
+    font=("Arial", 14),
+    width=20,
+    text_color=LIGHT_TEXT
+)
+confirm_icon.pack(side="left")
+
+ctk.CTkLabel(
+    confirm_password_frame, 
+    text="Confirm Password", 
+    font=("Arial", 14),
+    anchor="w",
+    text_color=TEXT_COLOR
+).pack(side="left", padx=(5, 0))
+
+confirm_password_entry = ctk.CTkEntry(
+    content_frame, 
+    width=400, 
+    height=40, 
+    show="•", 
+    placeholder_text="Confirm your password",
+    border_color=BORDER_COLOR,
+    corner_radius=5
+)
+confirm_password_entry.pack(pady=(0, 15))
+
+# Terms & Conditions with improved styling
+terms_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+terms_frame.pack(fill="x", pady=(5, 20))
+
 agree_var = ctk.IntVar()
-terms_checkbox = ctk.CTkCheckBox(content_frame, text="I agree to the Terms & Conditions", 
-                                variable=agree_var, font=("Arial", 12))
-terms_checkbox.pack(pady=(5, 15))
+terms_checkbox = ctk.CTkCheckBox(
+    terms_frame, 
+    text="I agree to the Terms & Conditions", 
+    variable=agree_var, 
+    font=("Arial", 12),
+    checkbox_height=20,
+    checkbox_width=20,
+    border_color=SECONDARY_COLOR,
+    fg_color=SECONDARY_COLOR,
+    hover_color=HOVER_COLOR,
+    text_color=LIGHT_TEXT
+)
+terms_checkbox.pack(side="left")
 
-# Sign Up Button
-signup_btn = ctk.CTkButton(content_frame, text="Sign Up", font=("Arial", 14, "bold"), 
-                          fg_color="#0F2D52", hover_color="#1E4D88", 
-                          width=400, height=45, corner_radius=5, command=signup_user)
-signup_btn.pack(pady=(5, 15))
+# Sign Up Button with improved styling
+signup_btn = ctk.CTkButton(
+    content_frame, 
+    text="Sign Up", 
+    font=("Arial", 15, "bold"), 
+    fg_color=PRIMARY_COLOR, 
+    hover_color=HOVER_COLOR, 
+    width=400, 
+    height=45, 
+    corner_radius=5, 
+    command=signup_user
+)
+signup_btn.pack(pady=(0, 20))
 
-# Login Link
+# Login Link with improved styling
 login_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 login_frame.pack(pady=(0, 20))
 
-ctk.CTkLabel(login_frame, text="Already have an account? ", font=("Arial", 12)).pack(side="left")
-login_link = ctk.CTkLabel(login_frame, text="Login", text_color="#1E90FF", 
-                        font=("Arial", 12, "bold"), cursor="hand2")
+ctk.CTkLabel(
+    login_frame, 
+    text="Already have an account? ", 
+    font=("Arial", 12),
+    text_color=LIGHT_TEXT
+).pack(side="left")
+
+login_link = ctk.CTkLabel(
+    login_frame, 
+    text="Login", 
+    text_color=SECONDARY_COLOR, 
+    font=("Arial", 12, "bold"), 
+    cursor="hand2"
+)
 login_link.pack(side="left")
 login_link.bind("<Button-1>", open_login_page)
 
