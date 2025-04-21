@@ -392,7 +392,7 @@ def delete_booking_ui():
         details_frame.pack_forget()
         
         # Reset selected booking
-        global selected_booking
+    
         selected_booking = None
 
 def filter_bookings():
