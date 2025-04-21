@@ -1,0 +1,5 @@
+customtkinter==5.2.0
+mysql-connector-python==8.0.33
+Pillow
+tkcalendar==1.6.1
+matplotlib==3.7.2
