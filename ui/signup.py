@@ -5,6 +5,7 @@ import hashlib
 import subprocess
 import sys
 import os
+from PIL import Image, ImageTk
 
 # ------------------- Database Connection -------------------
 def connect_db():
@@ -18,6 +19,28 @@ def connect_db():
 # ------------------- Password Hashing -------------------
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
+# ------------------- Icon Loader Function -------------------
+def load_icon(icon_path, size=(20, 20)):
+    """Load an icon image and resize it to the specified size"""
+    try:
+        # Check if the icon exists
+        if not os.path.exists(icon_path):
+            # Try looking in a resources/icons directory
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            alt_path = os.path.join(base_dir, "resources", "icons", os.path.basename(icon_path))
+            if os.path.exists(alt_path):
+                icon_path = alt_path
+            else:
+                print(f"Icon not found: {icon_path}")
+                return None
+                
+        icon = Image.open(icon_path)
+        icon = icon.resize(size, Image.LANCZOS)
+        return ImageTk.PhotoImage(icon)
+    except Exception as e:
+        print(f"Error loading icon {icon_path}: {e}")
+        return None
 
 # ------------------- Sign Up Function -------------------
 def signup_user():
@@ -109,8 +132,6 @@ left_frame.pack(side="left", fill="both", expand=True)
 
 # Load and display the PNG image
 try:
-    from PIL import Image, ImageTk
-    
     # Create a frame for the image
     image_frame = ctk.CTkFrame(left_frame, fg_color=PRIMARY_COLOR)
     image_frame.pack(fill="both", expand=True, padx=30, pady=30)
@@ -158,11 +179,11 @@ try:
             text_color="white"
         )
         
-except ImportError:
-    # Fallback if PIL is not installed
+except Exception as e:
+    # Fallback if PIL is not installed or other error occurs
     error_label = ctk.CTkLabel(
         left_frame, 
-        text="PIL module not found\nPlease install PIL/Pillow with:\npip install Pillow", 
+        text=f"Error loading image: {e}\nPlease install PIL/Pillow with:\npip install Pillow", 
         font=("Arial", 14), 
         text_color="white"
     )
@@ -180,17 +201,30 @@ content_frame.pack(expand=True, fill="both", padx=40)
 logo_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=60)
 logo_frame.pack(pady=(50, 0))
 
-# Hotel logo using a proper icon style instead of emoji
-logo_label = ctk.CTkLabel(
-    logo_frame, 
-    text="H", 
-    font=("Arial", 28, "bold"), 
-    text_color="white",
-    fg_color=PRIMARY_COLOR,
-    corner_radius=8,
-    width=50,
-    height=50
-)
+# Try to load a hotel logo image
+hotel_logo_image = None
+logo_path = "hotel_logo.png"  # Replace with your actual logo file
+hotel_logo_image = load_icon(logo_path, size=(50, 50))
+
+if hotel_logo_image:
+    logo_label = ctk.CTkLabel(
+        logo_frame,
+        text="",
+        image=hotel_logo_image
+    )
+    logo_label.image = hotel_logo_image  # Keep a reference
+else:
+    # Fallback to text-based logo
+    logo_label = ctk.CTkLabel(
+        logo_frame, 
+        text="H", 
+        font=("Arial", 28, "bold"), 
+        text_color="white",
+        fg_color=PRIMARY_COLOR,
+        corner_radius=8,
+        width=50,
+        height=50
+    )
 logo_label.pack()
 
 ctk.CTkLabel(
@@ -207,20 +241,42 @@ ctk.CTkLabel(
     text_color=LIGHT_TEXT
 ).pack(pady=(5, 25))
 
-# Form fields with centered labels
-# Full Name Field
+# --------------------- Form Fields with Icons ---------------------
+
+# Full Name Field with Icon
 name_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 name_label_frame.pack(fill="x", pady=(0, 5))
 
+# Load person icon
+person_icon_image = None
+person_icon_path = "user_icon.png"  # Replace with your actual icon file
+person_icon_image = load_icon(person_icon_path)
+
+# Create a label frame to contain both icon and text
+person_label_frame = ctk.CTkFrame(name_label_frame, fg_color="transparent")
+person_label_frame.pack(anchor="center")
+
+# Add icon if available
+if person_icon_image:
+    person_icon_label = ctk.CTkLabel(
+        person_label_frame,
+        text="",
+        image=person_icon_image,
+        width=20
+    )
+    person_icon_label.image = person_icon_image  # Keep a reference
+    person_icon_label.pack(side="left", padx=(0, 5))
+
+# Add text label
 name_label = ctk.CTkLabel(
-    name_label_frame,
+    person_label_frame,
     text="Full Name",
     font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-name_label.pack(anchor="center")
+name_label.pack(side="left")
 
-# Add a person icon to the entry field (similar to the mockup)
+# Full Name entry
 fullname_entry = ctk.CTkEntry(
     content_frame,
     width=400,
@@ -231,18 +287,40 @@ fullname_entry = ctk.CTkEntry(
 )
 fullname_entry.pack(pady=(0, 15))
 
-# Email Field
+# Email Field with Icon
 email_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 email_label_frame.pack(fill="x", pady=(0, 5))
 
+# Load email icon
+email_icon_image = None
+email_icon_path = "email_icon.png"  # Replace with your actual icon file
+email_icon_image = load_icon(email_icon_path)
+
+# Create a label frame to contain both icon and text
+email_label_container = ctk.CTkFrame(email_label_frame, fg_color="transparent")
+email_label_container.pack(anchor="center")
+
+# Add icon if available
+if email_icon_image:
+    email_icon_label = ctk.CTkLabel(
+        email_label_container,
+        text="",
+        image=email_icon_image,
+        width=20
+    )
+    email_icon_label.image = email_icon_image  # Keep a reference
+    email_icon_label.pack(side="left", padx=(0, 5))
+
+# Add text label
 email_label = ctk.CTkLabel(
-    email_label_frame,
+    email_label_container,
     text="Email",
     font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-email_label.pack(anchor="center")
+email_label.pack(side="left")
 
+# Email entry
 email_entry = ctk.CTkEntry(
     content_frame,
     width=400,
@@ -253,18 +331,40 @@ email_entry = ctk.CTkEntry(
 )
 email_entry.pack(pady=(0, 15))
 
-# Phone Number Field
+# Phone Number Field with Icon
 phone_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 phone_label_frame.pack(fill="x", pady=(0, 5))
 
+# Load phone icon
+phone_icon_image = None
+phone_icon_path = "phone_icon.png"  # Replace with your actual icon file
+phone_icon_image = load_icon(phone_icon_path)
+
+# Create a label frame to contain both icon and text
+phone_label_container = ctk.CTkFrame(phone_label_frame, fg_color="transparent")
+phone_label_container.pack(anchor="center")
+
+# Add icon if available
+if phone_icon_image:
+    phone_icon_label = ctk.CTkLabel(
+        phone_label_container,
+        text="",
+        image=phone_icon_image,
+        width=20
+    )
+    phone_icon_label.image = phone_icon_image  # Keep a reference
+    phone_icon_label.pack(side="left", padx=(0, 5))
+
+# Add text label
 phone_label = ctk.CTkLabel(
-    phone_label_frame,
+    phone_label_container,
     text="Phone Number",
     font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-phone_label.pack(anchor="center")
+phone_label.pack(side="left")
 
+# Phone number entry
 phone_entry = ctk.CTkEntry(
     content_frame,
     width=400,
@@ -275,18 +375,40 @@ phone_entry = ctk.CTkEntry(
 )
 phone_entry.pack(pady=(0, 15))
 
-# Password Field
+# Password Field with Icon
 password_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 password_label_frame.pack(fill="x", pady=(0, 5))
 
+# Load password icon
+password_icon_image = None
+password_icon_path = "lock_icon.png"  # Replace with your actual icon file
+password_icon_image = load_icon(password_icon_path)
+
+# Create a label frame to contain both icon and text
+password_label_container = ctk.CTkFrame(password_label_frame, fg_color="transparent")
+password_label_container.pack(anchor="center")
+
+# Add icon if available
+if password_icon_image:
+    password_icon_label = ctk.CTkLabel(
+        password_label_container,
+        text="",
+        image=password_icon_image,
+        width=20
+    )
+    password_icon_label.image = password_icon_image  # Keep a reference
+    password_icon_label.pack(side="left", padx=(0, 5))
+
+# Add text label
 password_label = ctk.CTkLabel(
-    password_label_frame,
+    password_label_container,
     text="Password",
     font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-password_label.pack(anchor="center")
+password_label.pack(side="left")
 
+# Password entry
 password_entry = ctk.CTkEntry(
     content_frame,
     width=400,
@@ -298,23 +420,40 @@ password_entry = ctk.CTkEntry(
 )
 password_entry.pack(pady=(0, 15))
 
-# Confirm Password Field
+# Confirm Password Field with Icon
 confirm_password_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 confirm_password_label_frame.pack(fill="x", pady=(0, 5))
 
+# Create a label frame to contain both icon and text
+confirm_password_label_container = ctk.CTkFrame(confirm_password_label_frame, fg_color="transparent")
+confirm_password_label_container.pack(anchor="center")
+
+# Add icon if available (reuse the password icon)
+if password_icon_image:
+    confirm_icon_label = ctk.CTkLabel(
+        confirm_password_label_container,
+        text="",
+        image=password_icon_image,
+        width=20
+    )
+    confirm_icon_label.image = password_icon_image  # Keep a reference
+    confirm_icon_label.pack(side="left", padx=(0, 5))
+
+# Add text label
 confirm_password_label = ctk.CTkLabel(
-    confirm_password_label_frame,
+    confirm_password_label_container,
     text="Confirm Password",
     font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-confirm_password_label.pack(anchor="center")
+confirm_password_label.pack(side="left")
 
+# Confirm password entry
 confirm_password_entry = ctk.CTkEntry(
-    content_frame, 
-    width=400, 
-    height=40, 
-    show="•", 
+    content_frame,
+    width=400,
+    height=40,
+    show="•",
     placeholder_text="Confirm your password",
     border_color=BORDER_COLOR,
     corner_radius=5
