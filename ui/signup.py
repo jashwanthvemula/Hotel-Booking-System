@@ -207,32 +207,24 @@ ctk.CTkLabel(
     text_color=LIGHT_TEXT
 ).pack(pady=(5, 25))
 
-# Form fields with icon indicators
+# Form fields with centered labels
 # Full Name Field
-name_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
-name_frame.pack(fill="x", pady=(0, 5))
+name_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+name_label_frame.pack(fill="x", pady=(0, 5))
 
-person_icon = ctk.CTkLabel(
-    name_frame, 
-    text="👤", # You can replace this with an actual icon if needed
-    font=("Arial", 14),
-    width=20,
+name_label = ctk.CTkLabel(
+    name_label_frame,
+    text="Full Name",
+    font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-person_icon.pack(side="left")
+name_label.pack(anchor="center")
 
-ctk.CTkLabel(
-    name_frame, 
-    text="Full Name", 
-    font=("Arial", 14),
-    anchor="w",
-    text_color=TEXT_COLOR
-).pack(side="left", padx=(5, 0))
-
+# Add a person icon to the entry field (similar to the mockup)
 fullname_entry = ctk.CTkEntry(
-    content_frame, 
-    width=400, 
-    height=40, 
+    content_frame,
+    width=400,
+    height=40,
     placeholder_text="Enter your full name",
     border_color=BORDER_COLOR,
     corner_radius=5
@@ -240,30 +232,21 @@ fullname_entry = ctk.CTkEntry(
 fullname_entry.pack(pady=(0, 15))
 
 # Email Field
-email_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
-email_frame.pack(fill="x", pady=(0, 5))
+email_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+email_label_frame.pack(fill="x", pady=(0, 5))
 
-email_icon = ctk.CTkLabel(
-    email_frame, 
-    text="✉️", # You can replace this with an actual icon if needed
-    font=("Arial", 14),
-    width=20,
+email_label = ctk.CTkLabel(
+    email_label_frame,
+    text="Email",
+    font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-email_icon.pack(side="left")
-
-ctk.CTkLabel(
-    email_frame, 
-    text="Email", 
-    font=("Arial", 14),
-    anchor="w",
-    text_color=TEXT_COLOR
-).pack(side="left", padx=(5, 0))
+email_label.pack(anchor="center")
 
 email_entry = ctk.CTkEntry(
-    content_frame, 
-    width=400, 
-    height=40, 
+    content_frame,
+    width=400,
+    height=40,
     placeholder_text="Enter your email",
     border_color=BORDER_COLOR,
     corner_radius=5
@@ -271,30 +254,21 @@ email_entry = ctk.CTkEntry(
 email_entry.pack(pady=(0, 15))
 
 # Phone Number Field
-phone_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
-phone_frame.pack(fill="x", pady=(0, 5))
+phone_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+phone_label_frame.pack(fill="x", pady=(0, 5))
 
-phone_icon = ctk.CTkLabel(
-    phone_frame, 
-    text="📞", # You can replace this with an actual icon if needed
-    font=("Arial", 14),
-    width=20,
+phone_label = ctk.CTkLabel(
+    phone_label_frame,
+    text="Phone Number",
+    font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-phone_icon.pack(side="left")
-
-ctk.CTkLabel(
-    phone_frame, 
-    text="Phone Number", 
-    font=("Arial", 14),
-    anchor="w",
-    text_color=TEXT_COLOR
-).pack(side="left", padx=(5, 0))
+phone_label.pack(anchor="center")
 
 phone_entry = ctk.CTkEntry(
-    content_frame, 
-    width=400, 
-    height=40, 
+    content_frame,
+    width=400,
+    height=40,
     placeholder_text="Enter your phone number",
     border_color=BORDER_COLOR,
     corner_radius=5
@@ -302,31 +276,22 @@ phone_entry = ctk.CTkEntry(
 phone_entry.pack(pady=(0, 15))
 
 # Password Field
-password_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
-password_frame.pack(fill="x", pady=(0, 5))
+password_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+password_label_frame.pack(fill="x", pady=(0, 5))
 
-password_icon = ctk.CTkLabel(
-    password_frame, 
-    text="🔒", # You can replace this with an actual icon if needed
-    font=("Arial", 14),
-    width=20,
+password_label = ctk.CTkLabel(
+    password_label_frame,
+    text="Password",
+    font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-password_icon.pack(side="left")
-
-ctk.CTkLabel(
-    password_frame, 
-    text="Password", 
-    font=("Arial", 14),
-    anchor="w",
-    text_color=TEXT_COLOR
-).pack(side="left", padx=(5, 0))
+password_label.pack(anchor="center")
 
 password_entry = ctk.CTkEntry(
-    content_frame, 
-    width=400, 
-    height=40, 
-    show="•", 
+    content_frame,
+    width=400,
+    height=40,
+    show="•",
     placeholder_text="Enter your password",
     border_color=BORDER_COLOR,
     corner_radius=5
@@ -334,25 +299,16 @@ password_entry = ctk.CTkEntry(
 password_entry.pack(pady=(0, 15))
 
 # Confirm Password Field
-confirm_password_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=30)
-confirm_password_frame.pack(fill="x", pady=(0, 5))
+confirm_password_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+confirm_password_label_frame.pack(fill="x", pady=(0, 5))
 
-confirm_icon = ctk.CTkLabel(
-    confirm_password_frame, 
-    text="🔒", # You can replace this with an actual icon if needed
-    font=("Arial", 14),
-    width=20,
+confirm_password_label = ctk.CTkLabel(
+    confirm_password_label_frame,
+    text="Confirm Password",
+    font=("Arial", 12),
     text_color=LIGHT_TEXT
 )
-confirm_icon.pack(side="left")
-
-ctk.CTkLabel(
-    confirm_password_frame, 
-    text="Confirm Password", 
-    font=("Arial", 14),
-    anchor="w",
-    text_color=TEXT_COLOR
-).pack(side="left", padx=(5, 0))
+confirm_password_label.pack(anchor="center")
 
 confirm_password_entry = ctk.CTkEntry(
     content_frame, 
