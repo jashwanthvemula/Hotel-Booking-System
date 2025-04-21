@@ -81,7 +81,7 @@ def go_to_bookings():
     open_page("bookings")
 
 def go_to_profile():
-    open_page("profile")
+    open_page("user")  # Changed from profile.py to user.py
 
 def go_to_feedback():
     open_page("feedback")
@@ -126,101 +126,187 @@ def search_hotels():
         for widget in scrollable_frame.winfo_children():
             widget.destroy()
         
-        # Perform the search from database
+        connection = None
+        cursor = None
+        
         try:
             connection = connect_db()
-            cursor = connection.cursor(dictionary=True)
+            cursor = connection.cursor()
+            cursor.execute("SHOW TABLES LIKE 'Hotel'")
+            hotel_table_exists = cursor.fetchone() is not None
             
-            # Build the search query
-            query = """
-                SELECT h.Hotel_ID, h.hotel_name, h.location, 
-                       h.description, h.star_rating, h.image_path,
-                       MIN(rc.base_price) as min_price
-                FROM Hotel h
-                LEFT JOIN RoomCategory rc ON h.Hotel_ID = rc.Hotel_ID
-                WHERE 1=1
-            """
-            params = []
-            
-            # Add location filter
-            if location:
-                query += " AND h.location LIKE %s"
-                params.append(f"%{location}%")
-                
-            # Add room availability filter if dates are provided
-            if check_in and check_out:
-                query += """ 
-                    AND EXISTS (
-                        SELECT 1 FROM Room r 
-                        WHERE r.Hotel_ID = h.Hotel_ID 
-                        AND r.Availability_status = 'Available'
-                    )
-                """
-                
-            # Finish the query
-            query += " GROUP BY h.Hotel_ID ORDER BY h.star_rating DESC, min_price"
-            
-            cursor.execute(query, params)
-            hotels_data = cursor.fetchall()
-            
-            # Display search results
-            if hotels_data:
-                # Format hotel data and create cards
-                for hotel in hotels_data:
-                    # Format hotel data similar to load_popular_hotels
-                    cursor.execute(
-                        """
-                        SELECT GROUP_CONCAT(CONCAT(a.amenity_icon, ' ', a.amenity_name) SEPARATOR ' | ') as amenities
-                        FROM Hotel_Amenities ha
-                        JOIN Amenities a ON ha.Amenity_ID = a.Amenity_ID
-                        WHERE ha.Hotel_ID = %s
-                        LIMIT 3
-                        """, 
-                        (hotel['Hotel_ID'],)
-                    )
-                    amenities_result = cursor.fetchone()
-                    
-                    # Format amenities
-                    amenities = amenities_result['amenities'] if amenities_result and amenities_result['amenities'] else "📶 Free WiFi | 🏊 Pool | 🚗 Free Parking"
-                    
-                    # Format price
-                    price = f"${hotel['min_price']:.2f} per night" if hotel['min_price'] else "Price on request"
-                    
-                    # Format description
-                    description = f"{hotel['description'][:100]}..." if hotel['description'] else "Beautiful hotel in a prime location."
-                    
-                    # Create hotel card
-                    hotel_data = (
-                        hotel['hotel_name'],
-                        description,
-                        amenities,
-                        price,
-                        hotel['image_path'],
-                        hotel['Hotel_ID']  # Pass the Hotel_ID for booking
-                    )
-                    
-                    card = create_hotel_card(scrollable_frame, hotel_data)
-                    card.pack(anchor="w", padx=10, pady=10, fill="x")
-            else:
-                # No hotels found
-                no_results_label = ctk.CTkLabel(
-                    scrollable_frame,
-                    text="No hotels found matching your criteria.",
-                    font=("Arial", 14),
-                    text_color="gray"
+            # If Hotel table doesn't exist, use Room table
+            if not hotel_table_exists:
+                # Perform search using Room table
+                cursor.execute(
+                    """
+                    SELECT Room_ID as Hotel_ID, Room_Type as hotel_name, 
+                           CONCAT('Room ', Room_ID) as location, 
+                           CONCAT('Comfortable ', Room_Type) as description,
+                           3 as star_rating, NULL as image_path,
+                           Price_per_Night as min_price
+                    FROM Room
+                    WHERE Availability_status = 'Available'
+                    AND Room_Type LIKE %s
+                    """,
+                    (f"%{location}%",)
                 )
-                no_results_label.pack(pady=50)
+                hotels_data = cursor.fetchall()
                 
+                # Create hotel cards from room data
+                if hotels_data:
+                    for hotel in hotels_data:
+                        # Create a dictionary with the expected field names
+                        hotel_dict = {
+                            'Hotel_ID': hotel[0],
+                            'hotel_name': hotel[1],
+                            'location': hotel[2],
+                            'description': hotel[3],
+                            'star_rating': hotel[4],
+                            'image_path': hotel[5],
+                            'min_price': hotel[6]
+                        }
+                        
+                        # Default amenities
+                        amenities = "📶 Free WiFi | 🏊 Pool | 🚗 Free Parking"
+                        
+                        # Format price
+                        price = f"${hotel_dict['min_price']:.2f} per night" if hotel_dict['min_price'] else "Price on request"
+                        
+                        # Create hotel card
+                        hotel_data = (
+                            hotel_dict['hotel_name'],
+                            hotel_dict['description'],
+                            amenities,
+                            price,
+                            hotel_dict['image_path'],
+                            hotel_dict['Hotel_ID']  # Pass the ID for booking
+                        )
+                        
+                        card = create_hotel_card(scrollable_frame, hotel_data)
+                        card.pack(anchor="w", padx=10, pady=10, fill="x")
+                else:
+                    # No hotels found message
+                    no_results_label = ctk.CTkLabel(
+                        scrollable_frame,
+                        text="No rooms found matching your criteria.",
+                        font=("Arial", 14),
+                        text_color="gray"
+                    )
+                    no_results_label.pack(pady=50)
+                
+            else:
+                # Hotel table exists, perform proper search
+                cursor = connection.cursor(dictionary=True)
+                
+                # Build the search query
+                query = """
+                    SELECT h.Hotel_ID, h.hotel_name, h.location, 
+                           h.description, h.star_rating, h.image_path,
+                           MIN(rc.base_price) as min_price
+                    FROM Hotel h
+                    LEFT JOIN RoomCategory rc ON h.Hotel_ID = rc.Hotel_ID
+                    WHERE 1=1
+                """
+                params = []
+                
+                # Add location filter
+                if location:
+                    query += " AND h.location LIKE %s"
+                    params.append(f"%{location}%")
+                    
+                # Add room availability filter if dates are provided
+                if check_in and check_out:
+                    # This is simplified - in real application you'd check against bookings
+                    query += """ 
+                        AND EXISTS (
+                            SELECT 1 FROM Room r 
+                            WHERE r.hotel_id = h.Hotel_ID 
+                            AND r.Availability_status = 'Available'
+                        )
+                    """
+                    
+                # Finish the query
+                query += " GROUP BY h.Hotel_ID ORDER BY h.star_rating DESC, min_price"
+                
+                try:
+                    cursor.execute(query, params)
+                    hotels_data = cursor.fetchall()
+                except mysql.connector.Error as err:
+                    # If the query fails, try a simpler version without hotel_id in Room
+                    print(f"Search error: {err}")
+                    query = """
+                        SELECT h.Hotel_ID, h.hotel_name, h.location, 
+                               h.description, h.star_rating, h.image_path,
+                               NULL as min_price
+                        FROM Hotel h
+                        WHERE h.location LIKE %s
+                        ORDER BY h.star_rating DESC
+                    """
+                    cursor.execute(query, [f"%{location}%"])
+                    hotels_data = cursor.fetchall()
+
+                # Display search results
+                if hotels_data:
+                    # Format hotel data and create cards
+                    for hotel in hotels_data:
+                        # Try to get amenities 
+                        try:
+                            cursor.execute(
+                                """
+                                SELECT GROUP_CONCAT(CONCAT(a.amenity_icon, ' ', a.amenity_name) SEPARATOR ' | ') as amenities
+                                FROM Hotel_Amenities ha
+                                JOIN Amenities a ON ha.Amenity_ID = a.Amenity_ID
+                                WHERE ha.Hotel_ID = %s
+                                LIMIT 3
+                                """, 
+                                (hotel['Hotel_ID'],)
+                            )
+                            amenities_result = cursor.fetchone()
+                            amenities = amenities_result['amenities'] if amenities_result and amenities_result['amenities'] else "📶 Free WiFi | 🏊 Pool | 🚗 Free Parking"
+                        except mysql.connector.Error:
+                            amenities = "📶 Free WiFi | 🏊 Pool | 🚗 Free Parking"
+                        
+                        # Format price
+                        price = f"${hotel['min_price']:.2f} per night" if hotel['min_price'] else "Price on request"
+                        
+                        # Format description
+                        description = f"{hotel['description'][:100]}..." if hotel['description'] else "Beautiful hotel in a prime location."
+                        
+                        # Create hotel card
+                        hotel_data = (
+                            hotel['hotel_name'],
+                            description,
+                            amenities,
+                            price,
+                            hotel['image_path'],
+                            hotel['Hotel_ID']  # Pass the Hotel_ID for booking
+                        )
+                        
+                        card = create_hotel_card(scrollable_frame, hotel_data)
+                        card.pack(anchor="w", padx=10, pady=10, fill="x")
+                else:
+                    # No hotels found
+                    no_results_label = ctk.CTkLabel(
+                        scrollable_frame,
+                        text="No hotels found matching your criteria.",
+                        font=("Arial", 14),
+                        text_color="gray"
+                    )
+                    no_results_label.pack(pady=50)
+                    
         except mysql.connector.Error as err:
             messagebox.showerror("Database Error", f"Search failed: {err}")
             print(f"Database Error: {err}")
         finally:
-            if 'connection' in locals() and connection.is_connected():
+            if cursor:
                 cursor.close()
+            if connection and connection.is_connected():
                 connection.close()
     
     except Exception as e:
         messagebox.showerror("Search Error", str(e))
+            
 
 # ------------------- View Hotel Details -------------------
 def view_hotel_details(hotel_id):

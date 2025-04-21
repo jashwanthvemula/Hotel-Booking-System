@@ -71,7 +71,7 @@ def go_to_bookings():
     open_page("bookings")
 
 def go_to_profile():
-    open_page("profile")
+    open_page("user")  # Changed from profile.py to user.py
 
 def go_to_feedback():
     open_page("feedback")
@@ -93,26 +93,121 @@ def load_user_bookings():
         connection = connect_db()
         cursor = connection.cursor(dictionary=True)
         
-        # Query to get all bookings for the current user with hotel and room details
-        cursor.execute(
-            """
-            SELECT b.Booking_ID, b.Check_IN_Date, b.Check_Out_Date, 
-                   b.Total_Cost, b.Booking_Status, b.Guests,
-                   r.Room_Type, r.Price_per_Night,
-                   h.hotel_name, h.location, h.image_path
-            FROM Booking b
-            JOIN Room r ON b.Room_ID = r.Room_ID
-            JOIN Hotel h ON r.Hotel_ID = h.Hotel_ID
-            WHERE b.User_ID = %s
-            ORDER BY b.Check_IN_Date DESC
-            """,
-            (current_user['user_id'],)
-        )
-        bookings_data = cursor.fetchall()
-        
-        # Return the booking data
-        return bookings_data
+        # First, try a simple query to get booking data
+        try:
+            cursor.execute(
+                """
+                SELECT b.Booking_ID, b.Check_IN_Date, b.Check_Out_Date, 
+                       b.Total_Cost, b.Booking_Status,
+                       r.Room_Type, r.Price_per_Night
+                FROM Booking b
+                JOIN Room r ON b.Room_ID = r.Room_ID
+                WHERE b.User_ID = %s
+                ORDER BY b.Check_IN_Date DESC
+                """,
+                (current_user['user_id'],)
+            )
+            bookings_data = cursor.fetchall()
             
+            # Default values for additional fields
+            for booking in bookings_data:
+                booking['Guests'] = 2  # Default value
+                room_parts = booking['Room_Type'].split(' - ', 1)
+                booking['hotel_name'] = room_parts[0] if len(room_parts) > 1 else booking['Room_Type']
+                booking['location'] = "Location information not available"
+                booking['image_path'] = None
+            
+            return bookings_data
+                
+        except mysql.connector.Error as err:
+            # If simple query fails, try more detailed approach
+            print(f"Simple query failed: {err}")
+            
+            # Check if Booking table has a Guests column
+            cursor.execute("SHOW COLUMNS FROM Booking LIKE 'Guests'")
+            has_guests_column = cursor.fetchone() is not None
+            
+            # Check if Room is related to Hotel
+            try:
+                # Try to see if Room table has hotel_id column
+                cursor.execute("SHOW COLUMNS FROM Room LIKE 'hotel_id'")
+                has_hotel_id = cursor.fetchone() is not None
+                
+                # If so, build a query with hotel information
+                if has_hotel_id:
+                    base_query = """
+                        SELECT b.Booking_ID, b.Check_IN_Date, b.Check_Out_Date, 
+                               b.Total_Cost, b.Booking_Status,
+                               r.Room_Type, r.Price_per_Night, 
+                               h.hotel_name, h.location, h.image_path
+                    """
+                    
+                    if has_guests_column:
+                        base_query += ", b.Guests"
+                        
+                    query = f"""
+                        {base_query}
+                        FROM Booking b
+                        JOIN Room r ON b.Room_ID = r.Room_ID
+                        JOIN Hotel h ON r.hotel_id = h.Hotel_ID
+                        WHERE b.User_ID = %s
+                        ORDER BY b.Check_IN_Date DESC
+                    """
+                    
+                    cursor.execute(query, (current_user['user_id'],))
+                    bookings_data = cursor.fetchall()
+                    
+                    # Add default Guests if needed
+                    if not has_guests_column:
+                        for booking in bookings_data:
+                            booking['Guests'] = 2  # Default value
+                    
+                    return bookings_data
+                
+            except mysql.connector.Error:
+                # If that fails, fall back to basic booking information
+                if has_guests_column:
+                    cursor.execute(
+                        """
+                        SELECT b.Booking_ID, b.Check_IN_Date, b.Check_Out_Date, 
+                               b.Total_Cost, b.Booking_Status, b.Guests,
+                               r.Room_Type, r.Price_per_Night
+                        FROM Booking b
+                        JOIN Room r ON b.Room_ID = r.Room_ID
+                        WHERE b.User_ID = %s
+                        ORDER BY b.Check_IN_Date DESC
+                        """,
+                        (current_user['user_id'],)
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT b.Booking_ID, b.Check_IN_Date, b.Check_Out_Date, 
+                               b.Total_Cost, b.Booking_Status,
+                               r.Room_Type, r.Price_per_Night
+                        FROM Booking b
+                        JOIN Room r ON b.Room_ID = r.Room_ID
+                        WHERE b.User_ID = %s
+                        ORDER BY b.Check_IN_Date DESC
+                        """,
+                        (current_user['user_id'],)
+                    )
+                
+                bookings_data = cursor.fetchall()
+                
+                # Add missing fields with default values
+                for booking in bookings_data:
+                    if not has_guests_column:
+                        booking['Guests'] = 2  # Default value
+                    
+                    # Extract hotel name from room type if possible
+                    room_parts = booking['Room_Type'].split(' - ', 1)
+                    booking['hotel_name'] = room_parts[0] if len(room_parts) > 1 else booking['Room_Type']
+                    booking['location'] = "Location information not available"
+                    booking['image_path'] = None
+                
+                return bookings_data
+        
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", f"Could not load bookings: {err}")
         print(f"Database Error: {err}")
@@ -190,24 +285,34 @@ def create_booking_card(parent, booking_data):
     """Create a card widget for a booking"""
     card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color="#D5D8DC", height=200)
     
-    # Extract booking data
-    hotel_name = booking_data['hotel_name']
-    room_type = booking_data['Room_Type']
-    check_in = datetime.strftime(booking_data['Check_IN_Date'], "%m/%d/%Y")
-    check_out = datetime.strftime(booking_data['Check_Out_Date'], "%m/%d/%Y")
-    total_cost = booking_data['Total_Cost']
-    booking_status = booking_data['Booking_Status']
-    guests = booking_data['Guests']
-    location = booking_data['location']
-    image_path = booking_data['image_path']
-    booking_id = booking_data['Booking_ID']
+    # Extract booking data with safe defaults for missing fields
+    hotel_name = booking_data.get('hotel_name', "Hotel")
+    room_type = booking_data.get('Room_Type', "Room")
+    
+    # Safely format dates
+    try:
+        check_in = datetime.strftime(booking_data['Check_IN_Date'], "%m/%d/%Y")
+    except (TypeError, KeyError):
+        check_in = str(booking_data.get('Check_IN_Date', "N/A"))
+        
+    try:
+        check_out = datetime.strftime(booking_data['Check_Out_Date'], "%m/%d/%Y")
+    except (TypeError, KeyError):
+        check_out = str(booking_data.get('Check_Out_Date', "N/A"))
+    
+    total_cost = booking_data.get('Total_Cost', 0)
+    booking_status = booking_data.get('Booking_Status', "Unknown")
+    guests = booking_data.get('Guests', 1)
+    location = booking_data.get('location', "Location not available")
+    image_path = booking_data.get('image_path', None)
+    booking_id = booking_data.get('Booking_ID', 0)
     
     # Grid layout for the card
     card.grid_columnconfigure(0, weight=0)
     card.grid_columnconfigure(1, weight=1)
     
     # Try to load and display the hotel image
-    if image_path and os.path.exists(image_path):
+    if image_path and os.path.exists(str(image_path)):
         try:
             from PIL import Image, ImageTk
             hotel_image = Image.open(image_path)
@@ -253,7 +358,13 @@ def create_booking_card(parent, booking_data):
     # Store a reference to the status label for later updates
     status_frame.status_label = status_label
     
-    ctk.CTkLabel(status_frame, text=f"Total Cost: ${total_cost:.2f}", 
+    # Format total cost with proper handling for different types
+    try:
+        total_cost_formatted = f"${float(total_cost):.2f}"
+    except (ValueError, TypeError):
+        total_cost_formatted = f"${total_cost}" if total_cost else "$0.00"
+    
+    ctk.CTkLabel(status_frame, text=f"Total Cost: {total_cost_formatted}", 
                font=("Arial", 14, "bold"), text_color="#1E90FF").pack(anchor="w")
     
     # Button Frame
@@ -307,8 +418,9 @@ nav_buttons = [
 ]
 
 for btn_text, btn_command in nav_buttons:
+    is_active = "My Bookings" in btn_text
     btn = ctk.CTkButton(sidebar, text=btn_text, font=("Arial", 14), 
-                      fg_color="transparent" if btn_text != "📅 My Bookings" else "#34495E", 
+                      fg_color="#34495E" if is_active else "transparent", 
                       hover_color="#34495E", 
                       anchor="w", height=40, width=180, 
                       command=btn_command)
