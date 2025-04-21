@@ -12,10 +12,11 @@ def connect_mysql():
     """Connect to MySQL without specifying a database"""
     try:
         return mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="new_password"
+             host="141.209.241.57",
+        user="cheru4a",  # Replace with your MySQL username
+        password="mypass",  # Replace with your MySQL password
         )
+    
     except mysql.connector.Error as err:
         return None
 

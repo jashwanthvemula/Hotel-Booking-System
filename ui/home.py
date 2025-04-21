@@ -21,7 +21,6 @@ def connect_db():
     )
 
 
-
 # ------------------- User Session Management -------------------
 def load_user_session(user_id=None):
     """Load user information from database"""

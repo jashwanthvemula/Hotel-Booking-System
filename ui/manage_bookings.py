@@ -9,11 +9,12 @@ from tkcalendar import DateEntry  # You may need to install this: pip install tk
 # ------------------- Database Connection -------------------
 def connect_db():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="new_password",
-        database="hotel_book"
+        host="141.209.241.57",
+        user="cheru4a",  # Replace with your MySQL username
+        password="mypass",  # Replace with your MySQL password
+        database="BIS698M1530_GRP1"  # Replace with your database name
     )
+    
 
 # ------------------- Global Variables -------------------
 current_admin = None
