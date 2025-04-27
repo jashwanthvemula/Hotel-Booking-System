@@ -6,32 +6,26 @@ import sys
 import os
 import hashlib
 from PIL import Image, ImageTk
+from db_config import connect_mysql, connect_db,database_name
 
 # ------------------- Database Setup Functions -------------------
-def connect_mysql():
-    """Connect to MySQL without specifying a database"""
-    try:
-        return mysql.connector.connect(
-             host="141.209.241.57",
-        user="cheru4a",  # Replace with your MySQL username
-        password="mypass",  # Replace with your MySQL password
-        )
-    
-    except mysql.connector.Error as err:
-        return None
-
 def setup_database():
     """Create database and tables if they don't exist"""
+    connection = None
     try:
         # Connect to MySQL (without specifying a database)
         connection = connect_mysql()
+        if connection is None:
+            return False
+            
         cursor = connection.cursor()
         
         # Create database if it doesn't exist
-        cursor.execute("CREATE DATABASE IF NOT EXISTS BIS698M1530_GRP1")
-        cursor.execute("USE BIS698M1530_GRP1")
+        database_name = "hotel_book"
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name}")
+        cursor.execute(f"USE {database_name}")
         
-        # Create Users table
+        # Create Users table with security question fields
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS Users (
                 user_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -41,7 +35,9 @@ def setup_database():
                 phone VARCHAR(20),
                 password VARCHAR(255) NOT NULL,
                 user_address VARCHAR(255),
-                user_role VARCHAR(20) DEFAULT 'customer'
+                user_role VARCHAR(20) DEFAULT 'customer',
+                security_question VARCHAR(255),
+                security_answer VARCHAR(255)
             )
         """)
         
@@ -103,54 +99,53 @@ def setup_database():
                 FOREIGN KEY (Generated_By) REFERENCES Admin(Admin_ID) ON DELETE SET NULL
             )
         """)
-        # Add these tables to the setup_database function in main.py after the Report table
-
-# Create Hotel table
+        
+        # Create Hotel table
         cursor.execute("""
-    CREATE TABLE IF NOT EXISTS Hotel (
-        Hotel_ID INT AUTO_INCREMENT PRIMARY KEY,
-        hotel_name VARCHAR(100) NOT NULL,
-        location VARCHAR(100) NOT NULL,
-        description TEXT,
-        star_rating INT NOT NULL CHECK (star_rating BETWEEN 1 AND 5),
-        image_path VARCHAR(255),
-        created_by INT,
-        FOREIGN KEY (created_by) REFERENCES Admin(Admin_ID) ON DELETE SET NULL
-    )
-""")
+            CREATE TABLE IF NOT EXISTS Hotel (
+                Hotel_ID INT AUTO_INCREMENT PRIMARY KEY,
+                hotel_name VARCHAR(100) NOT NULL,
+                location VARCHAR(100) NOT NULL,
+                description TEXT,
+                star_rating INT NOT NULL CHECK (star_rating BETWEEN 1 AND 5),
+                image_path VARCHAR(255),
+                created_by INT,
+                FOREIGN KEY (created_by) REFERENCES Admin(Admin_ID) ON DELETE SET NULL
+            )
+        """)
 
-# Create RoomCategory table
+        # Create RoomCategory table
         cursor.execute("""
-    CREATE TABLE IF NOT EXISTS RoomCategory (
-        Category_ID INT AUTO_INCREMENT PRIMARY KEY,
-        Hotel_ID INT NOT NULL,
-        category_name VARCHAR(50) NOT NULL,
-        description TEXT,
-        base_price DECIMAL(10, 2) NOT NULL,
-        capacity INT NOT NULL,
-        FOREIGN KEY (Hotel_ID) REFERENCES Hotel(Hotel_ID) ON DELETE CASCADE
-    )
-""")
+            CREATE TABLE IF NOT EXISTS RoomCategory (
+                Category_ID INT AUTO_INCREMENT PRIMARY KEY,
+                Hotel_ID INT NOT NULL,
+                category_name VARCHAR(50) NOT NULL,
+                description TEXT,
+                base_price DECIMAL(10, 2) NOT NULL,
+                capacity INT NOT NULL,
+                FOREIGN KEY (Hotel_ID) REFERENCES Hotel(Hotel_ID) ON DELETE CASCADE
+            )
+        """)
 
-# Create Amenities table
+        # Create Amenities table
         cursor.execute("""
-    CREATE TABLE IF NOT EXISTS Amenities (
-        Amenity_ID INT AUTO_INCREMENT PRIMARY KEY,
-        amenity_name VARCHAR(50) NOT NULL,
-        amenity_icon VARCHAR(20)
-    )
-""")
+            CREATE TABLE IF NOT EXISTS Amenities (
+                Amenity_ID INT AUTO_INCREMENT PRIMARY KEY,
+                amenity_name VARCHAR(50) NOT NULL,
+                amenity_icon VARCHAR(20)
+            )
+        """)
 
-# Create Hotel_Amenities junction table
+        # Create Hotel_Amenities junction table
         cursor.execute("""
-    CREATE TABLE IF NOT EXISTS Hotel_Amenities (
-        Hotel_ID INT NOT NULL,
-        Amenity_ID INT NOT NULL,
-        PRIMARY KEY (Hotel_ID, Amenity_ID),
-        FOREIGN KEY (Hotel_ID) REFERENCES Hotel(Hotel_ID) ON DELETE CASCADE,
-        FOREIGN KEY (Amenity_ID) REFERENCES Amenities(Amenity_ID) ON DELETE CASCADE
-    )
-""")
+            CREATE TABLE IF NOT EXISTS Hotel_Amenities (
+                Hotel_ID INT NOT NULL,
+                Amenity_ID INT NOT NULL,
+                PRIMARY KEY (Hotel_ID, Amenity_ID),
+                FOREIGN KEY (Hotel_ID) REFERENCES Hotel(Hotel_ID) ON DELETE CASCADE,
+                FOREIGN KEY (Amenity_ID) REFERENCES Amenities(Amenity_ID) ON DELETE CASCADE
+            )
+        """)
         
         # Commit the changes
         connection.commit()
@@ -160,33 +155,22 @@ def setup_database():
         messagebox.showerror("Database Setup Error", f"Error setting up database: {err}")
         return False
     finally:
-        if 'connection' in locals() and connection.is_connected():
+        if connection is not None and connection.is_connected():
             cursor.close()
             connection.close()
-
-def connect_db():
-    """Connect to the hotel_booking database"""
-    try:
-        return mysql.connector.connect(
-            host="141.209.241.57",
-        user="cheru4a",  # Replace with your MySQL username
-        password="mypass", 
-            database="BIS698M1530_GRP1"
-        )
-    except mysql.connector.Error as err:
-        messagebox.showerror("Database Error", str(err))
-        return None
 
 def hash_password(password):
     """Hash a password using SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Add this function to main.py and call it after add_sample_data()
-
 def add_sample_hotels():
     """Add sample hotels if Hotel table is empty"""
+    connection = None
     try:
         connection = connect_db()
+        if connection is None:
+            return False
+            
         cursor = connection.cursor()
         
         # Check if Hotel table is empty
@@ -297,17 +281,18 @@ def add_sample_hotels():
         print(f"Error adding sample hotels: {err}")
         return False
     finally:
-        if 'connection' in locals() and connection.is_connected():
+        if connection is not None and connection.is_connected():
             cursor.close()
             connection.close()
 
-# Then in the main() function, add this after add_sample_data():
-add_sample_hotels()
-
 def add_sample_data():
     """Add sample admin, rooms, and users if tables are empty"""
+    connection = None
     try:
         connection = connect_db()
+        if connection is None:
+            return False
+            
         cursor = connection.cursor()
         
         # Check if Admin table is empty
@@ -353,12 +338,15 @@ def add_sample_data():
         if user_count == 0:
             # Add a test user
             hashed_password = hash_password("test123")
+            hashed_security_answer = hash_password("testanswer")
             cursor.execute(
                 """
-                INSERT INTO Users (first_name, last_name, email, phone, password, user_address, user_role) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO Users (first_name, last_name, email, phone, password, user_address, user_role, security_question, security_answer) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                ("Test", "User", "test@example.com", "123-456-7890", hashed_password, "123 Test St, Test City", "customer")
+                ("Test", "User", "test@example.com", "123-456-7890", hashed_password, 
+                 "123 Test St, Test City", "customer", 
+                 "What is your mother's maiden name?", hashed_security_answer)
             )
         
         connection.commit()
@@ -369,7 +357,7 @@ def add_sample_data():
         print(f"Error adding sample data: {err}")
         return False
     finally:
-        if 'connection' in locals() and connection.is_connected():
+        if connection is not None and connection.is_connected():
             cursor.close()
             connection.close()
 
@@ -393,7 +381,7 @@ def open_signup():
 def open_admin_login():
     """Open the admin login page"""
     try:
-        subprocess.Popen([sys.executable, "admin_login.py"])
+        subprocess.Popen([sys.executable, "admin/admin_login.py"])
         app.destroy()  # Close the current window
     except Exception as e:
         messagebox.showerror("Error", f"Unable to open admin login page: {e}")
@@ -405,7 +393,7 @@ def exit_app():
 # ------------------- Check Files Exist -------------------
 def check_required_files():
     """Check if the required Python files exist"""
-    required_files = ["login.py", "signup.py", "admin_login.py", "home.py", "admin.py"]
+    required_files = ["login.py", "signup.py", "admin/admin_login.py", "home.py", "admin/admin.py"]
     missing_files = []
     
     for file in required_files:
@@ -428,10 +416,12 @@ def main():
     
     # Setup the database and add sample data
     if not setup_database():
-        messagebox.showerror("Setup Error", "Failed to set up the database. The application may not function correctly.")
+        messagebox.showerror("Setup Error", "Failed to set up the database. The application will exit.")
+        return
     else:
         if not add_sample_data():
             messagebox.showwarning("Data Warning", "Failed to add sample data. The application will continue, but some features may not work as expected.")
+        add_sample_hotels()
     
     # Check if all required files exist
     check_required_files()
@@ -461,7 +451,7 @@ def main():
         
         try:
             # Try to load the image
-            image_path = "city_hotel.png"
+            image_path = "images/city_hotel.png"
             hotel_image = Image.open(image_path)
             
             # Resize the image

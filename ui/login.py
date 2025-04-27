@@ -9,11 +9,12 @@ import os
 # ------------------- Database Connection -------------------
 def connect_db():
     return mysql.connector.connect(
-        host="141.209.241.57",
-        user="cheru4a",  # Replace with your MySQL username
-        password="mypass",  # Replace with your MySQL password
-        database="BIS698M1530_GRP1"  # Replace with your database name
+        host="127.0.0.1",
+        user="root",  # Replace with your MySQL username
+        password="new_password",   # Replace with your MySQL password
+        database="hotel_book"  # Replace with your database name
     )
+
 # ------------------- Password Hashing -------------------
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -29,7 +30,7 @@ def open_signup(event=None):
 # ------------------- Open Admin Login -------------------
 def open_admin_login():
     try:
-        subprocess.Popen([sys.executable, "admin_login.py"])
+        subprocess.Popen([sys.executable, "admin/admin_login.py"])
         app.destroy()  # Close the current login window
     except Exception as e:
         messagebox.showerror("Error", f"Unable to open admin login: {e}")
@@ -43,15 +44,62 @@ def forgot_password(event=None):
         
     try:
         connection = connect_db()
-        cursor = connection.cursor()
-        cursor.execute("SELECT user_id FROM Users WHERE email = %s", (email,))
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT user_id, security_question FROM Users WHERE email = %s", (email,))
         user = cursor.fetchone()
         
         if user:
-            # In a real application, you would send a password reset email
-            messagebox.showinfo("Password Reset", 
-                f"A password reset link has been sent to {email}.\n\n"
-                f"Please check your email.")
+            # Create a new window for security question
+            security_window = ctk.CTkToplevel(app)
+            security_window.title("Security Question")
+            security_window.geometry("400x300")
+            security_window.resizable(False, False)
+            
+            # Center the window
+            security_window.transient(app)
+            security_window.grab_set()
+            
+            # Security Question Label
+            ctk.CTkLabel(security_window, text=user['security_question'], 
+                        font=("Montserrat", 14), wraplength=350).pack(pady=(20, 10))
+            
+            # Answer Entry
+            answer_entry = ctk.CTkEntry(security_window, width=300, height=40, 
+                                      placeholder_text="Enter your answer", show="•")
+            answer_entry.pack(pady=10)
+            
+            def verify_answer():
+                answer = answer_entry.get()
+                if not answer:
+                    messagebox.showwarning("Input Required", "Please enter your answer.")
+                    return
+                
+                # Hash the provided answer
+                hashed_answer = hash_password(answer.lower())
+                
+                # Verify the answer
+                cursor.execute("SELECT security_answer FROM Users WHERE email = %s", (email,))
+                stored_answer = cursor.fetchone()['security_answer']
+                
+                if hashed_answer == stored_answer:
+                    messagebox.showinfo("Password Reset", 
+                        f"A password reset link has been sent to {email}.\n\n"
+                        f"Please check your email.")
+                    security_window.destroy()
+                else:
+                    messagebox.showerror("Verification Failed", "Incorrect answer.")
+            
+            # Verify Button
+            verify_btn = ctk.CTkButton(security_window, text="Verify Answer", 
+                                     command=verify_answer, width=300, height=40)
+            verify_btn.pack(pady=20)
+            
+            # Cancel Button
+            cancel_btn = ctk.CTkButton(security_window, text="Cancel", 
+                                     command=security_window.destroy, 
+                                     fg_color="#E74C3C", width=300, height=40)
+            cancel_btn.pack(pady=10)
+            
         else:
             messagebox.showwarning("Account Not Found", "No account found with this email address.")
     
@@ -188,7 +236,7 @@ try:
     
     try:
         # Path to hotel image
-        image_path = "city_hotel.png"
+        image_path = "images/city_hotel.png"
         
         # Check if image exists, if not create a resources directory and search there
         if not os.path.exists(image_path):
@@ -279,7 +327,7 @@ logo_frame.pack(pady=(80, 0))
 
 # Try to load a hotel logo image
 hotel_logo_image = None
-logo_path = "hotel_logo.png"  # Replace with your actual logo file
+logo_path = "images/hotel_logo.png"  # Replace with your actual logo file
 hotel_logo_image = load_icon(logo_path, size=(70, 70))
 
 if hotel_logo_image:
@@ -323,7 +371,7 @@ email_label_frame.pack(fill="x", pady=(0, 5))
 
 # Load email icon
 email_icon_image = None
-email_icon_path = "email_icon.png"  # Replace with your actual icon file
+email_icon_path = "images/email_icon.png"  # Replace with your actual icon file
 email_icon_image = load_icon(email_icon_path)
 
 # Create a label frame to contain both icon and text
@@ -368,7 +416,7 @@ password_label_frame.pack(fill="x", pady=(0, 5))
 
 # Load password icon
 password_icon_image = None
-password_icon_path = "lock_icon.png"  # Replace with your actual icon file
+password_icon_path = "images/lock_icon.png"  # Replace with your actual icon file
 password_icon_image = load_icon(password_icon_path)
 
 # Create a label frame to contain both icon and text

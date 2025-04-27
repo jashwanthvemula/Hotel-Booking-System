@@ -8,10 +8,10 @@ import sys
 # ------------------- Database Connection -------------------
 def connect_db():
     return mysql.connector.connect(
-        host="141.209.241.57",
-        user="cheru4a",  # Replace with your MySQL username
-        password="mypass",  # Replace with your MySQL password
-        database="BIS698M1530_GRP1"  # Replace with your database name
+  host="127.0.0.1",
+        user="root",  # Replace with your MySQL username
+        password="new_password", 
+        database="hotel_book"  # Replace with your database name # Replace with your database name
     )
 
 # ------------------- Password Hashing -------------------
@@ -101,7 +101,7 @@ def login_admin():
 def open_admin_dashboard(admin_id):
     try:
         # Launch the admin dashboard and pass the admin ID
-        subprocess.Popen([sys.executable, "admin.py", str(admin_id)])
+        subprocess.Popen([sys.executable, "admin/admin.py", str(admin_id)])
     except Exception as e:
         messagebox.showerror("Error", f"Unable to open admin dashboard: {e}")
 
@@ -140,7 +140,7 @@ try:
     
     try:
         # Replace 'city_image.png' with the actual name of your PNG file
-        image_path = "city_hotel.png"  # Use the same image as user login
+        image_path = "images/city_hotel.png"  # Use the same image as user login
         
         # Load and resize the image
         hotel_image = Image.open(image_path)

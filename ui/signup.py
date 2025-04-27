@@ -10,10 +10,10 @@ from PIL import Image, ImageTk
 # ------------------- Database Connection -------------------
 def connect_db():
     return mysql.connector.connect(
-       host="141.209.241.57",
-        user="cheru4a",  # Replace with your MySQL username
-        password="mypass",  # Replace with your MySQL password
-        database="BIS698M1530_GRP1" 
+        host="127.0.0.1",
+        user="root",  # Replace with your MySQL username
+        password="new_password",   # Replace with your MySQL password
+        database="hotel_book" 
     )
 
 # ------------------- Password Hashing -------------------
@@ -49,9 +49,11 @@ def signup_user():
     phone = phone_entry.get()
     password = password_entry.get()
     confirm_password = confirm_password_entry.get()
+    security_question = security_question_var.get()
+    security_answer = security_answer_entry.get()
 
     # Simple validation
-    if not full_name or not email or not password or not confirm_password:
+    if not full_name or not email or not password or not confirm_password or not security_question or not security_answer:
         messagebox.showwarning("Input Error", "Please fill in all required fields.")
         return
 
@@ -70,8 +72,9 @@ def signup_user():
     first_name = name_parts[0]
     last_name = name_parts[1] if len(name_parts) > 1 else ""
 
-    # Hash the password
+    # Hash the password and security answer
     hashed_password = hash_password(password)
+    hashed_security_answer = hash_password(security_answer.lower())  # Store answer in lowercase for consistency
 
     try:
         connection = connect_db()
@@ -79,8 +82,8 @@ def signup_user():
 
         # Insert the user data into the database
         cursor.execute(
-            "INSERT INTO Users (first_name, last_name, email, phone, password) VALUES (%s, %s, %s, %s, %s)",
-            (first_name, last_name, email, phone, hashed_password)
+            "INSERT INTO Users (first_name, last_name, email, phone, password, security_question, security_answer) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (first_name, last_name, email, phone, hashed_password, security_question, hashed_security_answer)
         )
 
         connection.commit()
@@ -142,7 +145,7 @@ try:
     
     try:
         # Path to hotel image
-        image_path = "city_hotel.png"
+        image_path = "images/city_hotel.png"
         
         # Check if image exists, if not create a resources directory and search there
         if not os.path.exists(image_path):
@@ -203,7 +206,7 @@ logo_frame.pack(pady=(50, 0))
 
 # Try to load a hotel logo image
 hotel_logo_image = None
-logo_path = "hotel_logo.png"  # Replace with your actual logo file
+logo_path = "images/hotel_logo.png"  # Replace with your actual logo file
 hotel_logo_image = load_icon(logo_path, size=(50, 50))
 
 if hotel_logo_image:
@@ -249,7 +252,7 @@ name_label_frame.pack(fill="x", pady=(0, 5))
 
 # Load person icon
 person_icon_image = None
-person_icon_path = "user_icon.png"  # Replace with your actual icon file
+person_icon_path = "images/user_icon.png"  # Replace with your actual icon file
 person_icon_image = load_icon(person_icon_path)
 
 # Create a label frame to contain both icon and text
@@ -293,7 +296,7 @@ email_label_frame.pack(fill="x", pady=(0, 5))
 
 # Load email icon
 email_icon_image = None
-email_icon_path = "email_icon.png"  # Replace with your actual icon file
+email_icon_path = "images/email_icon.png"  # Replace with your actual icon file
 email_icon_image = load_icon(email_icon_path)
 
 # Create a label frame to contain both icon and text
@@ -337,7 +340,7 @@ phone_label_frame.pack(fill="x", pady=(0, 5))
 
 # Load phone icon
 phone_icon_image = None
-phone_icon_path = "phone_icon.png"  # Replace with your actual icon file
+phone_icon_path = "images/phone_icon.png"  # Replace with your actual icon file
 phone_icon_image = load_icon(phone_icon_path)
 
 # Create a label frame to contain both icon and text
@@ -375,13 +378,98 @@ phone_entry = ctk.CTkEntry(
 )
 phone_entry.pack(pady=(0, 15))
 
+# Security Question Field
+security_question_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+security_question_label_frame.pack(fill="x", pady=(0, 5))
+
+security_question_label_container = ctk.CTkFrame(security_question_label_frame, fg_color="transparent")
+security_question_label_container.pack(anchor="center")
+
+# Add security question icon if available
+security_icon_image = load_icon("lock_icon.png")  # Reuse lock icon
+if security_icon_image:
+    security_icon_label = ctk.CTkLabel(
+        security_question_label_container,
+        text="",
+        image=security_icon_image,
+        width=20
+    )
+    security_icon_label.image = security_icon_image
+    security_icon_label.pack(side="left", padx=(0, 5))
+
+security_question_label = ctk.CTkLabel(
+    security_question_label_container,
+    text="Security Question",
+    font=("Arial", 12),
+    text_color=LIGHT_TEXT
+)
+security_question_label.pack(side="left")
+
+# Security Question Dropdown
+security_questions = [
+    "What is your mother's maiden name?",
+    "What was your first pet's name?",
+    "What was your childhood nickname?",
+    "What is your favorite book?",
+    "What is the name of your elementary school?"
+]
+security_question_var = ctk.StringVar(value=security_questions[0])
+security_question_dropdown = ctk.CTkOptionMenu(
+    content_frame,
+    width=400,
+    height=40,
+    values=security_questions,
+    variable=security_question_var,
+    fg_color=BG_COLOR,
+    button_color=SECONDARY_COLOR,
+    button_hover_color=HOVER_COLOR,
+    dropdown_fg_color=BG_COLOR
+)
+security_question_dropdown.pack(pady=(0, 15))
+
+# Security Answer Field
+security_answer_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+security_answer_label_frame.pack(fill="x", pady=(0, 5))
+
+security_answer_label_container = ctk.CTkFrame(security_answer_label_frame, fg_color="transparent")
+security_answer_label_container.pack(anchor="center")
+
+if security_icon_image:
+    security_answer_icon_label = ctk.CTkLabel(
+        security_answer_label_container,
+        text="",
+        image=security_icon_image,
+        width=20
+    )
+    security_answer_icon_label.image = security_icon_image
+    security_answer_icon_label.pack(side="left", padx=(0, 5))
+
+security_answer_label = ctk.CTkLabel(
+    security_answer_label_container,
+    text="Security Answer",
+    font=("Arial", 12),
+    text_color=LIGHT_TEXT
+)
+security_answer_label.pack(side="left")
+
+security_answer_entry = ctk.CTkEntry(
+    content_frame,
+    width=400,
+    height=40,
+    placeholder_text="Enter your security answer",
+    border_color=BORDER_COLOR,
+    corner_radius=5,
+    show="•"
+)
+security_answer_entry.pack(pady=(0, 15))
+
 # Password Field with Icon
 password_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
 password_label_frame.pack(fill="x", pady=(0, 5))
 
 # Load password icon
 password_icon_image = None
-password_icon_path = "lock_icon.png"  # Replace with your actual icon file
+password_icon_path = "images/lock_icon.png"  # Replace with your actual icon file
 password_icon_image = load_icon(password_icon_path)
 
 # Create a label frame to contain both icon and text
