@@ -27,7 +27,7 @@ def setup_database():
 
 #         cursor.execute("""
 # ALTER TABLE Users
-# ADD COLUMN is_active TINYINT(1) DEFAULT 1 NOT NULL;
+# ADD COLUMN is_active TINYINT(1) DEFAULT 1 NOT NULL;""")
 
 # UPDATE Users SET is_active = 1 WHERE is_active IS NULL;""") 
         

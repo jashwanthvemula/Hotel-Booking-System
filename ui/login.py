@@ -51,13 +51,15 @@ def forgot_password(event=None):
         if user:
             # Create a new window for security question
             security_window = ctk.CTkToplevel(app)
-            security_window.title("Security Question")
+            security_window.title("Security Verification")
             security_window.geometry("400x300")
             security_window.resizable(False, False)
             
             # Center the window
             security_window.transient(app)
             security_window.grab_set()
+            
+            user_id = user['user_id']
             
             # Security Question Label
             ctk.CTkLabel(security_window, text=user['security_question'], 
@@ -74,20 +76,38 @@ def forgot_password(event=None):
                     messagebox.showwarning("Input Required", "Please enter your answer.")
                     return
                 
-                # Hash the provided answer
-                hashed_answer = hash_password(answer.lower())
+                # Connect to database within the function
+                try:
+                    verify_connection = connect_db()
+                    verify_cursor = verify_connection.cursor(dictionary=True)
+                    
+                    # Process security answer
+                    processed_answer = answer.lower().strip()
+                    hashed_answer = hash_password(processed_answer)
+                    
+                    # Verify the answer
+                    verify_cursor.execute("SELECT security_answer FROM Users WHERE email = %s", (email,))
+                    stored_answer_result = verify_cursor.fetchone()
+                    
+                    if stored_answer_result and 'security_answer' in stored_answer_result:
+                        stored_answer = stored_answer_result['security_answer']
+                        
+                        if hashed_answer == stored_answer:
+                            # Close verification window
+                            security_window.destroy()
+                            # Open password reset window
+                            show_password_reset_window(user_id, email)
+                        else:
+                            messagebox.showerror("Verification Failed", "Incorrect answer.")
+                    else:
+                        messagebox.showerror("Error", "Could not retrieve security answer information.")
                 
-                # Verify the answer
-                cursor.execute("SELECT security_answer FROM Users WHERE email = %s", (email,))
-                stored_answer = cursor.fetchone()['security_answer']
-                
-                if hashed_answer == stored_answer:
-                    messagebox.showinfo("Password Reset", 
-                        f"A password reset link has been sent to {email}.\n\n"
-                        f"Please check your email.")
-                    security_window.destroy()
-                else:
-                    messagebox.showerror("Verification Failed", "Incorrect answer.")
+                except mysql.connector.Error as err:
+                    messagebox.showerror("Database Error", f"Verification failed: {err}")
+                finally:
+                    if 'verify_connection' in locals() and verify_connection.is_connected():
+                        verify_cursor.close()
+                        verify_connection.close()
             
             # Verify Button
             verify_btn = ctk.CTkButton(security_window, text="Verify Answer", 
@@ -110,6 +130,97 @@ def forgot_password(event=None):
             cursor.close()
             connection.close()
 
+def show_password_reset_window(user_id, email):
+    """Show the password reset window where user can enter a new password"""
+    # Create a new window for password reset
+    reset_window = ctk.CTkToplevel(app)
+    reset_window.title("Reset Password")
+    reset_window.geometry("400x350")
+    reset_window.resizable(False, False)
+    
+    # Center the window
+    reset_window.transient(app)
+    reset_window.grab_set()
+    
+    # Header
+    ctk.CTkLabel(reset_window, text="Reset Your Password", 
+                font=("Montserrat", 18, "bold")).pack(pady=(25, 20))
+    
+    ctk.CTkLabel(reset_window, text=f"Enter a new password for {email}", 
+                font=("Montserrat", 12)).pack(pady=(0, 20))
+    
+    # New Password Entry
+    password_label = ctk.CTkLabel(reset_window, text="New Password", 
+                                font=("Montserrat", 12))
+    password_label.pack(anchor="w", padx=50, pady=(0, 5))
+    
+    new_password_entry = ctk.CTkEntry(reset_window, width=300, height=40, 
+                                    placeholder_text="Enter new password", show="•")
+    new_password_entry.pack(pady=(0, 15))
+    
+    # Confirm Password Entry
+    confirm_label = ctk.CTkLabel(reset_window, text="Confirm Password", 
+                                font=("Montserrat", 12))
+    confirm_label.pack(anchor="w", padx=50, pady=(0, 5))
+    
+    confirm_password_entry = ctk.CTkEntry(reset_window, width=300, height=40, 
+                                        placeholder_text="Confirm new password", show="•")
+    confirm_password_entry.pack(pady=(0, 20))
+    
+    def update_password():
+        new_password = new_password_entry.get()
+        confirm_password = confirm_password_entry.get()
+        
+        # Validate passwords
+        if not new_password or not confirm_password:
+            messagebox.showwarning("Input Required", "Please fill in all fields.")
+            return
+            
+        if new_password != confirm_password:
+            messagebox.showwarning("Password Mismatch", "Passwords do not match.")
+            return
+            
+        if len(new_password) < 6:
+            messagebox.showwarning("Password Too Short", "Password must be at least 6 characters.")
+            return
+        
+        # Connect to database
+        try:
+            update_connection = connect_db()
+            update_cursor = update_connection.cursor()
+            
+            # Hash the new password
+            hashed_password = hash_password(new_password)
+            
+            # Update the password in the database
+            update_cursor.execute(
+                "UPDATE Users SET password = %s WHERE user_id = %s", 
+                (hashed_password, user_id)
+            )
+            update_connection.commit()
+            
+            messagebox.showinfo("Success", "Password has been reset successfully!")
+            reset_window.destroy()
+            
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Password update failed: {err}")
+        finally:
+            if 'update_connection' in locals() and update_connection.is_connected():
+                update_cursor.close()
+                update_connection.close()
+    
+    # Update Button
+    update_btn = ctk.CTkButton(reset_window, text="Update Password", 
+                             command=update_password, width=300, height=40,
+                             fg_color="#2C3E50", hover_color="#1E88E5")
+    update_btn.pack(pady=10)
+    
+    # Cancel Button
+    cancel_btn = ctk.CTkButton(reset_window, text="Cancel", 
+                             command=reset_window.destroy, 
+                             fg_color="#E74C3C", hover_color="#C0392B", 
+                             width=300, height=40)
+    cancel_btn.pack(pady=10)
 # ------------------- Login Function -------------------
 def login_user():
     email = email_entry.get()

@@ -69,7 +69,15 @@ def signup_user():
 
     # Hash the password and security answer
     hashed_password = hash_password(password)
-    hashed_security_answer = hash_password(security_answer.lower())  # Store answer in lowercase for consistency
+    
+    # Process security answer consistently - lowercase and strip whitespace
+    processed_answer = security_answer.lower().strip()
+    hashed_security_answer = hash_password(processed_answer)
+    
+    # Debug prints to help troubleshoot the hashing issue
+    print(f"Debug - During signup - Original Answer: {security_answer}")
+    print(f"Debug - During signup - Processed Answer: {processed_answer}")
+    print(f"Debug - During signup - Answer Hash: {hashed_security_answer}")
 
     try:
         connection = connect_db()
