@@ -1325,24 +1325,35 @@ class HotelBookingApp:
         return frame
 
     def load_hotels(self):
+        """Load all hotels from database with room and booking counts"""
+        connection = connect_db()
+        if not connection:
+            return []
         try:
-            self.cursor.execute("""
-                SELECT h.Hotel_ID, h.Hotel_Name, h.Location, 
-                    COUNT(r.Room_ID) as rooms, 
-                    COUNT(b.Booking_ID) as bookings
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                """
+                SELECT h.Hotel_ID, h.hotel_name, h.location, 
+                    COUNT(DISTINCT rc.Category_ID) as rooms, 
+                    COUNT(DISTINCT b.Booking_ID) as bookings
                 FROM Hotel h
                 LEFT JOIN RoomCategory rc ON h.Hotel_ID = rc.Hotel_ID
-                LEFT JOIN Room r ON rc.Room_Type = r.Room_Type
-                LEFT JOIN Booking b ON r.Room_ID = b.Room_ID
+                LEFT JOIN Booking b ON rc.Category_ID = b.Room_ID
                 WHERE b.User_ID IS NULL OR b.User_ID IN (SELECT user_id FROM Users WHERE is_active = 1)
-                GROUP BY h.Hotel_ID, h.Hotel_Name, h.Location
-                ORDER BY h.Hotel_Name
-            """)
-            hotels = self.cursor.fetchall()
+                GROUP BY h.Hotel_ID, h.hotel_name, h.location
+                ORDER BY h.hotel_name
+                """
+            )
+            hotels = cursor.fetchall()
             return hotels
         except mysql.connector.Error as err:
+            print(f"Error loading hotels: {err}")
             messagebox.showerror("Database Error", f"Error loading hotels: {err}")
             return []
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
 
     def show_hotel_details(self, event):
         """Display details of selected hotel"""
@@ -1606,8 +1617,8 @@ class HotelBookingApp:
         for hotel in hotels:
             self.hotels_table.insert('', 'end', iid=hotel['Hotel_ID'], values=(
                 hotel['Hotel_ID'],
-                hotel['Hotel_Name'],
-                hotel['Location'],
+                hotel['hotel_name'],  # Updated column name to match database
+                hotel['location'],    # Updated column name to match database
                 hotel['rooms'],
                 hotel['bookings']
             ))
@@ -1624,31 +1635,59 @@ class HotelBookingApp:
             if not hotel:
                 return
             self.selected_hotel = hotel
+        
+        # Update form fields with selected hotel data
         self.hotels_name_entry.delete(0, 'end')
-        self.hotels_name_entry.insert(0, self.selected_hotel['Hotel_Name'])
+        self.hotels_name_entry.insert(0, self.selected_hotel['hotel_name'])
+        
         self.hotels_location_entry.delete(0, 'end')
-        self.hotels_location_entry.insert(0, self.selected_hotel['Location'])
-        self.hotels_description_entry.delete(0, 'end')
-        if self.selected_hotel['Description']:
-            self.hotels_description_entry.insert(0, self.selected_hotel['Description'])
+        self.hotels_location_entry.insert(0, self.selected_hotel['location'])
+        
+        self.hotels_description_entry.delete("1.0", "end")
+        if self.selected_hotel['description']:
+            self.hotels_description_entry.insert("1.0", self.selected_hotel['description'])
+        
+        self.hotels_star_rating_var.set(str(self.selected_hotel['star_rating']))
+        
         self.hotels_image_entry.configure(state="normal")
         self.hotels_image_entry.delete(0, 'end')
+        if self.selected_hotel['image_path']:
+            self.hotels_image_entry.insert(0, os.path.basename(self.selected_hotel['image_path']))
         self.hotels_image_entry.configure(state="readonly")
-        self.hotel_image_path = None
+        
+        self.hotel_image_path = self.selected_hotel['image_path'] if self.selected_hotel['image_path'] else None
+        
+        # Update amenities checkboxes
+        for amenity_id, var in self.hotels_amenity_vars.items():
+            var.set(0)  # Reset all first
+        
+        if 'amenities' in self.selected_hotel and self.selected_hotel['amenities']:
+            for amenity in self.selected_hotel['amenities']:
+                if amenity['Amenity_ID'] in self.hotels_amenity_vars:
+                    self.hotels_amenity_vars[amenity['Amenity_ID']].set(1)
+        
+        # Update UI buttons
         self.hotels_create_btn.grid_forget()
         self.hotels_update_btn.grid(row=0, column=0, padx=(0, 10))
         self.hotels_delete_btn.grid(row=0, column=1, padx=(0, 10))
         self.hotels_clear_btn.grid(row=0, column=2)
         self.hotels_update_btn.configure(state="normal")
         self.hotels_delete_btn.configure(state="normal")
+        
+        # Show details frame and populate it
         self.hotels_details_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
         self.hotels_details_hotel_id.configure(text=f"Hotel #{self.selected_hotel['Hotel_ID']}")
-        self.hotels_details_name.configure(text=f"{self.selected_hotel['Hotel_Name']}")
-        self.hotels_details_location.configure(text=f"{self.selected_hotel['Location']}")
-        self.hotels_details_description.configure(text=f"{self.selected_hotel['Description'] if self.selected_hotel['Description'] else 'No description available'}")
-        if self.selected_hotel['Image']:
+        self.hotels_details_name.configure(text=f"{self.selected_hotel['hotel_name']}")
+        self.hotels_details_location.configure(text=f"{self.selected_hotel['location']}")
+        
+        # Display description and star rating
+        star_rating_display = "★" * self.selected_hotel['star_rating']
+        self.hotels_details_description.configure(text=f"{self.selected_hotel['description'] if self.selected_hotel['description'] else 'No description available'}\nRating: {star_rating_display}")
+        
+        # Display image if available
+        if self.selected_hotel['image_path']:
             try:
-                image = Image.open(io.BytesIO(self.selected_hotel['Image']))
+                image = Image.open(self.selected_hotel['image_path'])
                 image = image.resize((150, 150), Image.LANCZOS)
                 photo = ImageTk.PhotoImage(image)
                 self.hotels_details_image_label.configure(image=photo, text="")
@@ -1658,21 +1697,93 @@ class HotelBookingApp:
                 self.hotels_details_image_label.configure(image=None, text="No image available")
         else:
             self.hotels_details_image_label.configure(image=None, text="No image available")
-        total_rooms = self.selected_hotel['rooms'] if self.selected_hotel['rooms'] else 0
-        total_bookings = self.selected_hotel['bookings'] if self.selected_hotel['bookings'] else 0
+        
+        # Update room and booking counts
+        total_rooms = len(self.selected_hotel['rooms']) if 'rooms' in self.selected_hotel and self.selected_hotel['rooms'] else 0
+        total_bookings = self.selected_hotel['bookings'] if 'bookings' in self.selected_hotel else 0
         self.hotels_details_rooms.configure(text=f"Total Rooms: {total_rooms}")
         self.hotels_details_bookings.configure(text=f"Total Bookings: {total_bookings}")
+        
+        # Clear and populate rooms table
         for row in self.hotels_rooms_table.get_children():
             self.hotels_rooms_table.delete(row)
+        
         if 'rooms' in self.selected_hotel and self.selected_hotel['rooms']:
             for room in self.selected_hotel['rooms']:
-                status = room['Availability_status'].lower()
                 self.hotels_rooms_table.insert('', 'end', values=(
                     room['Room_ID'],
                     room['Room_Type'],
                     f"${room['Price_per_Night']}",
                     room['Availability_status']
-                ), tags=(status,))
+                ), tags=(room['Availability_status'].lower(),))
+        
+        # Display amenities if available
+        if 'amenities' in self.selected_hotel and self.selected_hotel['amenities']:
+            amenities_text = ", ".join([f"{a['Amenity_Icon']} {a['Amenity_Name']}" for a in self.selected_hotel['amenities']])
+            current_text = self.hotels_details_description.cget("text")
+            self.hotels_details_description.configure(text=f"{current_text}\nAmenities: {amenities_text}")
+    def load_hotel_details(self, hotel_id):
+        """Load detailed information for a specific hotel"""
+        connection = connect_db()
+        if not connection:
+            return None
+        try:
+            cursor = connection.cursor(dictionary=True)
+            # Get hotel basic information
+            cursor.execute(
+                """
+                SELECT h.*, 
+                    COUNT(DISTINCT rc.Category_ID) as room_count,
+                    COUNT(DISTINCT b.Booking_ID) as bookings
+                FROM Hotel h
+                LEFT JOIN RoomCategory rc ON h.Hotel_ID = rc.Hotel_ID
+                LEFT JOIN Booking b ON rc.Category_ID = b.Room_ID
+                WHERE h.Hotel_ID = %s
+                GROUP BY h.Hotel_ID
+                """,
+                (hotel_id,)
+            )
+            hotel = cursor.fetchone()
+            
+            if hotel:
+                # Get hotel rooms
+                cursor.execute(
+                    """
+                    SELECT rc.Category_ID as Room_ID, rc.category_name as Room_Type, 
+                        rc.base_price as Price_per_Night,
+                        CASE 
+                            WHEN b.Booking_ID IS NULL THEN 'Available' 
+                            ELSE 'Booked' 
+                        END as Availability_status
+                    FROM RoomCategory rc
+                    LEFT JOIN Booking b ON rc.Category_ID = b.Room_ID AND b.Booking_Status != 'Cancelled'
+                    WHERE rc.Hotel_ID = %s
+                    """,
+                    (hotel_id,)
+                )
+                hotel['rooms'] = cursor.fetchall()
+                
+                # Get hotel amenities
+                cursor.execute(
+                    """
+                    SELECT a.Amenity_ID, a.amenity_name as Amenity_Name, a.amenity_icon as Amenity_Icon
+                    FROM Hotel_Amenities ha
+                    JOIN Amenities a ON ha.Amenity_ID = a.Amenity_ID
+                    WHERE ha.Hotel_ID = %s
+                    """,
+                    (hotel_id,)
+                )
+                hotel['amenities'] = cursor.fetchall()
+                
+            return hotel
+        except mysql.connector.Error as err:
+            print(f"Error loading hotel details: {err}")
+            messagebox.showerror("Database Error", f"Error loading hotel details: {err}")
+            return None
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
 
     def new_hotel_mode(self):
         """Switch to new hotel creation mode"""
