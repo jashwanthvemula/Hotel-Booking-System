@@ -116,7 +116,7 @@ ctk.set_default_color_theme("blue")
 app = ctk.CTk()
 app.title("Hotel Booking - Admin Login")
 app.geometry("1000x800")
-app.resizable(False, False)
+app.resizable(True, True)
 
 # ----------------- Main Frame -----------------
 main_frame = ctk.CTkFrame(app, fg_color="white", corner_radius=0)

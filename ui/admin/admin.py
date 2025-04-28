@@ -40,7 +40,7 @@ class HotelBookingApp:
         self.root.title("Hotel Booking - Admin Dashboard")
         self.root.geometry("1200x750")
         self.root.minsize(1000, 700)
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
 
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")

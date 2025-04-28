@@ -439,7 +439,7 @@ def main():
     app = ctk.CTk()
     app.title("Hotel Booking System - Launcher")
     app.geometry("1000x700")
-    app.resizable(False, False)
+    app.resizable(True, True)
     
     # Main Container
     main_frame = ctk.CTkFrame(app, fg_color="white", corner_radius=0)

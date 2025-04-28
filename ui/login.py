@@ -53,7 +53,7 @@ def forgot_password(event=None):
             security_window = ctk.CTkToplevel(app)
             security_window.title("Security Verification")
             security_window.geometry("400x300")
-            security_window.resizable(False, False)
+            security_window.resizable(True, True)
             
             # Center the window
             security_window.transient(app)
@@ -136,7 +136,7 @@ def show_password_reset_window(user_id, email):
     reset_window = ctk.CTkToplevel(app)
     reset_window.title("Reset Password")
     reset_window.geometry("400x350")
-    reset_window.resizable(False, False)
+    reset_window.resizable(True, True)
     
     # Center the window
     reset_window.transient(app)
@@ -318,7 +318,7 @@ ctk.set_default_color_theme("blue")
 app = ctk.CTk()
 app.title("Hotel Booking Login")
 app.geometry("1000x800")
-app.resizable(False, False)
+app.resizable(True, True)
 
 # Load custom font if available
 try:

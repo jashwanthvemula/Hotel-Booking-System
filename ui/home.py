@@ -19,7 +19,7 @@ class HotelBookingUserApp:
         self.root = root
         self.root.title("Hotel Booking")
         self.root.geometry("1200x700")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
         
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
