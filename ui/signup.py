@@ -6,22 +6,17 @@ import subprocess
 import sys
 import os
 from PIL import Image, ImageTk
+from db_config import connect_db  # Assuming you have a separate file for DB config
 
 # ------------------- Database Connection -------------------
-def connect_db():
-    return mysql.connector.connect(
-        host="127.0.0.1",
-        user="root",  # Replace with your MySQL username
-        password="new_password",   # Replace with your MySQL password
-        database="hotel_book" 
-    )
+
 
 # ------------------- Password Hashing -------------------
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 # ------------------- Icon Loader Function -------------------
-def load_icon(icon_path, size=(20, 20)):
+def load_icon(icon_path, size=(16, 16)):  # Reduced icon size
     """Load an icon image and resize it to the specified size"""
     try:
         # Check if the icon exists
@@ -120,24 +115,27 @@ BG_COLOR = "#FFFFFF"           # White background
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
+# Import necessary tkinter modules for scrolling
+import tkinter as tk
+
 app = ctk.CTk()
 app.title("Hotel Booking - Sign Up")
-app.geometry("1000x800")
-app.resizable(False, False)
+app.geometry("800x600")  # Further reduced height to emphasize scrolling need
+app.resizable(True, True)  # Allow resizing to see scrolling behavior
 
 # ----------------- Main Frame -----------------
 main_frame = ctk.CTkFrame(app, fg_color=BG_COLOR, corner_radius=0)
 main_frame.pack(expand=True, fill="both")
 
 # ----------------- Left Frame (Illustration) -----------------
-left_frame = ctk.CTkFrame(main_frame, fg_color=PRIMARY_COLOR, width=500, corner_radius=0)
+left_frame = ctk.CTkFrame(main_frame, fg_color=PRIMARY_COLOR, width=350, corner_radius=0)  # Reduced width
 left_frame.pack(side="left", fill="both", expand=True)
 
 # Load and display the PNG image
 try:
     # Create a frame for the image
     image_frame = ctk.CTkFrame(left_frame, fg_color=PRIMARY_COLOR)
-    image_frame.pack(fill="both", expand=True, padx=30, pady=30)
+    image_frame.pack(fill="both", expand=True, padx=20, pady=20)  # Reduced padding
     
     # Create a label to hold the image
     image_label = ctk.CTkLabel(image_frame, text="", fg_color=PRIMARY_COLOR)
@@ -158,8 +156,8 @@ try:
         # Load and resize the image
         hotel_image = Image.open(image_path)
         
-        # Get the dimensions of the frame
-        width, height = 420, 320
+        # Get the dimensions of the frame - reduced size
+        width, height = 300, 225
         
         # Resize the image while maintaining aspect ratio
         hotel_image = hotel_image.resize((width, height), Image.LANCZOS)
@@ -178,7 +176,7 @@ try:
         # Fallback text if image can't be loaded
         image_label.configure(
             text="Hotel Image Not Found", 
-            font=("Montserrat", 18, "bold"), 
+            font=("Montserrat", 16, "bold"),  # Smaller font
             text_color="white"
         )
         
@@ -187,27 +185,36 @@ except Exception as e:
     error_label = ctk.CTkLabel(
         left_frame, 
         text=f"Error loading image: {e}\nPlease install PIL/Pillow with:\npip install Pillow", 
-        font=("Arial", 14), 
+        font=("Arial", 12),  # Smaller font
         text_color="white"
     )
-    error_label.pack(pady=300)
+    error_label.pack(pady=200)  # Reduced padding
 
 # ----------------- Right Frame (Sign Up Form) -----------------
 right_frame = ctk.CTkFrame(main_frame, fg_color=BG_COLOR, corner_radius=0)
 right_frame.pack(side="right", fill="both", expand=True)
 
+# Create a canvas with scrollbar for the content
+canvas = ctk.CTkCanvas(right_frame, bg=BG_COLOR, highlightthickness=0)
+scrollbar = ctk.CTkScrollbar(right_frame, orientation="vertical", command=canvas.yview)
+canvas.configure(yscrollcommand=scrollbar.set)
+
+# Pack the canvas and scrollbar
+scrollbar.pack(side="right", fill="y")
+canvas.pack(side="left", fill="both", expand=True, padx=10)
+
 # Content Container (to center the form)
-content_frame = ctk.CTkFrame(right_frame, fg_color=BG_COLOR, width=400)
-content_frame.pack(expand=True, fill="both", padx=40)
+content_frame = ctk.CTkFrame(canvas, fg_color=BG_COLOR, width=350)  # Reduced width
+canvas_window = canvas.create_window((0, 0), window=content_frame, anchor="nw", width=canvas.winfo_width())
 
 # Hotel Logo and Title
-logo_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=60)
-logo_frame.pack(pady=(50, 0))
+logo_frame = ctk.CTkFrame(content_frame, fg_color="transparent", height=40)  # Reduced height
+logo_frame.pack(pady=(20, 0))  # Reduced top padding
 
 # Try to load a hotel logo image
 hotel_logo_image = None
 logo_path = "images/hotel_logo.png"  # Replace with your actual logo file
-hotel_logo_image = load_icon(logo_path, size=(50, 50))
+hotel_logo_image = load_icon(logo_path, size=(40, 40))  # Reduced logo size
 
 if hotel_logo_image:
     logo_label = ctk.CTkLabel(
@@ -221,34 +228,38 @@ else:
     logo_label = ctk.CTkLabel(
         logo_frame, 
         text="H", 
-        font=("Arial", 28, "bold"), 
+        font=("Arial", 24, "bold"),  # Smaller font
         text_color="white",
         fg_color=PRIMARY_COLOR,
         corner_radius=8,
-        width=50,
-        height=50
+        width=40,
+        height=40
     )
 logo_label.pack()
 
 ctk.CTkLabel(
     content_frame, 
     text="Hotel Booking", 
-    font=("Arial", 24, "bold"),
+    font=("Arial", 20, "bold"),  # Smaller font
     text_color=PRIMARY_COLOR
-).pack(pady=(10, 0))
+).pack(pady=(5, 0))
 
 ctk.CTkLabel(
     content_frame, 
     text="Create a New Account", 
-    font=("Arial", 16),
+    font=("Arial", 14),  # Smaller font
     text_color=LIGHT_TEXT
-).pack(pady=(5, 25))
+).pack(pady=(2, 15))  # Reduced padding
 
 # --------------------- Form Fields with Icons ---------------------
+# Setting consistent form field sizes
+FORM_WIDTH = 300  # Reduced width
+FORM_HEIGHT = 35  # Reduced height
+FIELD_PADDING = 8  # Reduced padding between fields
 
 # Full Name Field with Icon
 name_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-name_label_frame.pack(fill="x", pady=(0, 5))
+name_label_frame.pack(fill="x", pady=(0, 2))  # Reduced padding
 
 # Load person icon
 person_icon_image = None
@@ -257,7 +268,7 @@ person_icon_image = load_icon(person_icon_path)
 
 # Create a label frame to contain both icon and text
 person_label_frame = ctk.CTkFrame(name_label_frame, fg_color="transparent")
-person_label_frame.pack(anchor="center")
+person_label_frame.pack(anchor="w", padx=10)  # Left-aligned, added padding
 
 # Add icon if available
 if person_icon_image:
@@ -265,16 +276,16 @@ if person_icon_image:
         person_label_frame,
         text="",
         image=person_icon_image,
-        width=20
+        width=16  # Reduced width
     )
     person_icon_label.image = person_icon_image  # Keep a reference
-    person_icon_label.pack(side="left", padx=(0, 5))
+    person_icon_label.pack(side="left", padx=(0, 3))  # Reduced padding
 
 # Add text label
 name_label = ctk.CTkLabel(
     person_label_frame,
     text="Full Name",
-    font=("Arial", 12),
+    font=("Arial", 10),  # Smaller font
     text_color=LIGHT_TEXT
 )
 name_label.pack(side="left")
@@ -282,17 +293,17 @@ name_label.pack(side="left")
 # Full Name entry
 fullname_entry = ctk.CTkEntry(
     content_frame,
-    width=400,
-    height=40,
-    placeholder_text="Enter your full name",
+    width=FORM_WIDTH,
+    height=FORM_HEIGHT,
+    placeholder_text="Name",  # Shorter placeholder
     border_color=BORDER_COLOR,
     corner_radius=5
 )
-fullname_entry.pack(pady=(0, 15))
+fullname_entry.pack(pady=(0, FIELD_PADDING))
 
 # Email Field with Icon
 email_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-email_label_frame.pack(fill="x", pady=(0, 5))
+email_label_frame.pack(fill="x", pady=(0, 2))  # Reduced padding
 
 # Load email icon
 email_icon_image = None
@@ -301,7 +312,7 @@ email_icon_image = load_icon(email_icon_path)
 
 # Create a label frame to contain both icon and text
 email_label_container = ctk.CTkFrame(email_label_frame, fg_color="transparent")
-email_label_container.pack(anchor="center")
+email_label_container.pack(anchor="w", padx=10)  # Left-aligned, added padding
 
 # Add icon if available
 if email_icon_image:
@@ -309,16 +320,16 @@ if email_icon_image:
         email_label_container,
         text="",
         image=email_icon_image,
-        width=20
+        width=16  # Reduced width
     )
     email_icon_label.image = email_icon_image  # Keep a reference
-    email_icon_label.pack(side="left", padx=(0, 5))
+    email_icon_label.pack(side="left", padx=(0, 3))  # Reduced padding
 
 # Add text label
 email_label = ctk.CTkLabel(
     email_label_container,
     text="Email",
-    font=("Arial", 12),
+    font=("Arial", 10),  # Smaller font
     text_color=LIGHT_TEXT
 )
 email_label.pack(side="left")
@@ -326,17 +337,17 @@ email_label.pack(side="left")
 # Email entry
 email_entry = ctk.CTkEntry(
     content_frame,
-    width=400,
-    height=40,
-    placeholder_text="Enter your email",
+    width=FORM_WIDTH,
+    height=FORM_HEIGHT,
+    placeholder_text="Email",  # Shorter placeholder
     border_color=BORDER_COLOR,
     corner_radius=5
 )
-email_entry.pack(pady=(0, 15))
+email_entry.pack(pady=(0, FIELD_PADDING))
 
 # Phone Number Field with Icon
 phone_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-phone_label_frame.pack(fill="x", pady=(0, 5))
+phone_label_frame.pack(fill="x", pady=(0, 2))  # Reduced padding
 
 # Load phone icon
 phone_icon_image = None
@@ -345,7 +356,7 @@ phone_icon_image = load_icon(phone_icon_path)
 
 # Create a label frame to contain both icon and text
 phone_label_container = ctk.CTkFrame(phone_label_frame, fg_color="transparent")
-phone_label_container.pack(anchor="center")
+phone_label_container.pack(anchor="w", padx=10)  # Left-aligned, added padding
 
 # Add icon if available
 if phone_icon_image:
@@ -353,16 +364,16 @@ if phone_icon_image:
         phone_label_container,
         text="",
         image=phone_icon_image,
-        width=20
+        width=16  # Reduced width
     )
     phone_icon_label.image = phone_icon_image  # Keep a reference
-    phone_icon_label.pack(side="left", padx=(0, 5))
+    phone_icon_label.pack(side="left", padx=(0, 3))  # Reduced padding
 
 # Add text label
 phone_label = ctk.CTkLabel(
     phone_label_container,
     text="Phone Number",
-    font=("Arial", 12),
+    font=("Arial", 10),  # Smaller font
     text_color=LIGHT_TEXT
 )
 phone_label.pack(side="left")
@@ -370,20 +381,20 @@ phone_label.pack(side="left")
 # Phone number entry
 phone_entry = ctk.CTkEntry(
     content_frame,
-    width=400,
-    height=40,
-    placeholder_text="Enter your phone number",
+    width=FORM_WIDTH,
+    height=FORM_HEIGHT,
+    placeholder_text="Phone",  # Shorter placeholder
     border_color=BORDER_COLOR,
     corner_radius=5
 )
-phone_entry.pack(pady=(0, 15))
+phone_entry.pack(pady=(0, FIELD_PADDING))
 
 # Security Question Field
 security_question_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-security_question_label_frame.pack(fill="x", pady=(0, 5))
+security_question_label_frame.pack(fill="x", pady=(0, 2))  # Reduced padding
 
 security_question_label_container = ctk.CTkFrame(security_question_label_frame, fg_color="transparent")
-security_question_label_container.pack(anchor="center")
+security_question_label_container.pack(anchor="w", padx=10)  # Left-aligned, added padding
 
 # Add security question icon if available
 security_icon_image = load_icon("lock_icon.png")  # Reuse lock icon
@@ -392,15 +403,15 @@ if security_icon_image:
         security_question_label_container,
         text="",
         image=security_icon_image,
-        width=20
+        width=16  # Reduced width
     )
     security_icon_label.image = security_icon_image
-    security_icon_label.pack(side="left", padx=(0, 5))
+    security_icon_label.pack(side="left", padx=(0, 3))  # Reduced padding
 
 security_question_label = ctk.CTkLabel(
     security_question_label_container,
     text="Security Question",
-    font=("Arial", 12),
+    font=("Arial", 10),  # Smaller font
     text_color=LIGHT_TEXT
 )
 security_question_label.pack(side="left")
@@ -416,56 +427,57 @@ security_questions = [
 security_question_var = ctk.StringVar(value=security_questions[0])
 security_question_dropdown = ctk.CTkOptionMenu(
     content_frame,
-    width=400,
-    height=40,
+    width=FORM_WIDTH,
+    height=FORM_HEIGHT,
     values=security_questions,
     variable=security_question_var,
     fg_color=BG_COLOR,
     button_color=SECONDARY_COLOR,
     button_hover_color=HOVER_COLOR,
-    dropdown_fg_color=BG_COLOR
+    dropdown_fg_color=BG_COLOR,
+    font=("Arial", 10)  # Smaller font
 )
-security_question_dropdown.pack(pady=(0, 15))
+security_question_dropdown.pack(pady=(0, FIELD_PADDING))
 
 # Security Answer Field
 security_answer_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-security_answer_label_frame.pack(fill="x", pady=(0, 5))
+security_answer_label_frame.pack(fill="x", pady=(0, 2))  # Reduced padding
 
 security_answer_label_container = ctk.CTkFrame(security_answer_label_frame, fg_color="transparent")
-security_answer_label_container.pack(anchor="center")
+security_answer_label_container.pack(anchor="w", padx=10)  # Left-aligned, added padding
 
 if security_icon_image:
     security_answer_icon_label = ctk.CTkLabel(
         security_answer_label_container,
         text="",
         image=security_icon_image,
-        width=20
+        width=16  # Reduced width
     )
     security_answer_icon_label.image = security_icon_image
-    security_answer_icon_label.pack(side="left", padx=(0, 5))
+    security_answer_icon_label.pack(side="left", padx=(0, 3))  # Reduced padding
 
 security_answer_label = ctk.CTkLabel(
     security_answer_label_container,
     text="Security Answer",
-    font=("Arial", 12),
+    font=("Arial", 10),  # Smaller font
     text_color=LIGHT_TEXT
 )
 security_answer_label.pack(side="left")
 
 security_answer_entry = ctk.CTkEntry(
     content_frame,
-    width=400,
-    height=40,
-    placeholder_text="Enter your security answer",
+    width=FORM_WIDTH,
+    height=FORM_HEIGHT,
+    placeholder_text="Answer",  # Shorter placeholder
     border_color=BORDER_COLOR,
     corner_radius=5,
     show="•"
 )
-security_answer_entry.pack(pady=(0, 15))
+security_answer_entry.pack(pady=(0, FIELD_PADDING))
 
 # Password Field with Icon
 password_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-password_label_frame.pack(fill="x", pady=(0, 5))
+password_label_frame.pack(fill="x", pady=(0, 2))  # Reduced padding
 
 # Load password icon
 password_icon_image = None
@@ -474,7 +486,7 @@ password_icon_image = load_icon(password_icon_path)
 
 # Create a label frame to contain both icon and text
 password_label_container = ctk.CTkFrame(password_label_frame, fg_color="transparent")
-password_label_container.pack(anchor="center")
+password_label_container.pack(anchor="w", padx=10)  # Left-aligned, added padding
 
 # Add icon if available
 if password_icon_image:
@@ -482,16 +494,16 @@ if password_icon_image:
         password_label_container,
         text="",
         image=password_icon_image,
-        width=20
+        width=16  # Reduced width
     )
     password_icon_label.image = password_icon_image  # Keep a reference
-    password_icon_label.pack(side="left", padx=(0, 5))
+    password_icon_label.pack(side="left", padx=(0, 3))  # Reduced padding
 
 # Add text label
 password_label = ctk.CTkLabel(
     password_label_container,
     text="Password",
-    font=("Arial", 12),
+    font=("Arial", 10),  # Smaller font
     text_color=LIGHT_TEXT
 )
 password_label.pack(side="left")
@@ -499,22 +511,22 @@ password_label.pack(side="left")
 # Password entry
 password_entry = ctk.CTkEntry(
     content_frame,
-    width=400,
-    height=40,
+    width=FORM_WIDTH,
+    height=FORM_HEIGHT,
     show="•",
-    placeholder_text="Enter your password",
+    placeholder_text="Password",  # Shorter placeholder
     border_color=BORDER_COLOR,
     corner_radius=5
 )
-password_entry.pack(pady=(0, 15))
+password_entry.pack(pady=(0, FIELD_PADDING))
 
 # Confirm Password Field with Icon
 confirm_password_label_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-confirm_password_label_frame.pack(fill="x", pady=(0, 5))
+confirm_password_label_frame.pack(fill="x", pady=(0, 2))  # Reduced padding
 
 # Create a label frame to contain both icon and text
 confirm_password_label_container = ctk.CTkFrame(confirm_password_label_frame, fg_color="transparent")
-confirm_password_label_container.pack(anchor="center")
+confirm_password_label_container.pack(anchor="w", padx=10)  # Left-aligned, added padding
 
 # Add icon if available (reuse the password icon)
 if password_icon_image:
@@ -522,16 +534,16 @@ if password_icon_image:
         confirm_password_label_container,
         text="",
         image=password_icon_image,
-        width=20
+        width=16  # Reduced width
     )
     confirm_icon_label.image = password_icon_image  # Keep a reference
-    confirm_icon_label.pack(side="left", padx=(0, 5))
+    confirm_icon_label.pack(side="left", padx=(0, 3))  # Reduced padding
 
 # Add text label
 confirm_password_label = ctk.CTkLabel(
     confirm_password_label_container,
     text="Confirm Password",
-    font=("Arial", 12),
+    font=("Arial", 10),  # Smaller font
     text_color=LIGHT_TEXT
 )
 confirm_password_label.pack(side="left")
@@ -539,56 +551,56 @@ confirm_password_label.pack(side="left")
 # Confirm password entry
 confirm_password_entry = ctk.CTkEntry(
     content_frame,
-    width=400,
-    height=40,
+    width=FORM_WIDTH,
+    height=FORM_HEIGHT,
     show="•",
-    placeholder_text="Confirm your password",
+    placeholder_text="Confirm",  # Shorter placeholder
     border_color=BORDER_COLOR,
     corner_radius=5
 )
-confirm_password_entry.pack(pady=(0, 15))
+confirm_password_entry.pack(pady=(0, FIELD_PADDING))
 
 # Terms & Conditions with improved styling
 terms_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-terms_frame.pack(fill="x", pady=(5, 20))
+terms_frame.pack(fill="x", pady=(5, 10))  # Reduced padding
 
 agree_var = ctk.IntVar()
 terms_checkbox = ctk.CTkCheckBox(
     terms_frame, 
     text="I agree to the Terms & Conditions", 
     variable=agree_var, 
-    font=("Arial", 12),
-    checkbox_height=20,
-    checkbox_width=20,
+    font=("Arial", 10),  # Smaller font
+    checkbox_height=16,  # Smaller checkbox
+    checkbox_width=16,   # Smaller checkbox
     border_color=SECONDARY_COLOR,
     fg_color=SECONDARY_COLOR,
     hover_color=HOVER_COLOR,
     text_color=LIGHT_TEXT
 )
-terms_checkbox.pack(side="left")
+terms_checkbox.pack(side="left", padx=10)  # Added padding
 
 # Sign Up Button with improved styling
 signup_btn = ctk.CTkButton(
     content_frame, 
     text="Sign Up", 
-    font=("Arial", 15, "bold"), 
+    font=("Arial", 12, "bold"),  # Smaller font
     fg_color=PRIMARY_COLOR, 
     hover_color=HOVER_COLOR, 
-    width=400, 
-    height=45, 
+    width=FORM_WIDTH, 
+    height=40,  # Slightly taller for better visibility
     corner_radius=5, 
     command=signup_user
 )
-signup_btn.pack(pady=(0, 20))
+signup_btn.pack(pady=(0, 10))  # Reduced padding
 
 # Login Link with improved styling
 login_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
-login_frame.pack(pady=(0, 20))
+login_frame.pack(pady=(0, 10))  # Reduced padding
 
 ctk.CTkLabel(
     login_frame, 
     text="Already have an account? ", 
-    font=("Arial", 12),
+    font=("Arial", 10),  # Smaller font
     text_color=LIGHT_TEXT
 ).pack(side="left")
 
@@ -596,11 +608,34 @@ login_link = ctk.CTkLabel(
     login_frame, 
     text="Login", 
     text_color=SECONDARY_COLOR, 
-    font=("Arial", 12, "bold"), 
+    font=("Arial", 10, "bold"),  # Smaller font
     cursor="hand2"
 )
 login_link.pack(side="left")
 login_link.bind("<Button-1>", open_login_page)
+
+# Configure the scrolling region when content size changes
+def configure_scroll_region(event):
+    canvas.configure(scrollregion=canvas.bbox("all"))
+    
+    # Make sure canvas window fills the width of the canvas
+    if canvas.winfo_width() > 1:  # Avoid zero-width issue at initialization
+        canvas.itemconfig(canvas_window, width=canvas.winfo_width())
+
+content_frame.bind("<Configure>", configure_scroll_region)
+
+# Enable mousewheel scrolling
+def _on_mousewheel(event):
+    canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+# Adjust the canvas window width when the canvas is resized
+def on_canvas_configure(event):
+    if canvas.winfo_width() > 1:  # Avoid zero-width issue at initialization
+        canvas.itemconfig(canvas_window, width=canvas.winfo_width())
+
+canvas.bind("<Configure>", on_canvas_configure)
 
 # Run App
 app.mainloop()
