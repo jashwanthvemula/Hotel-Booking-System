@@ -1,3 +1,4 @@
+import subprocess
 import customtkinter as ctk
 from tkinter import messagebox, Canvas, Scrollbar, ttk
 import mysql.connector
@@ -132,9 +133,14 @@ class HotelBookingUserApp:
         return False
 
     def logout(self):
-        """Log out and return to login page"""
+        """Log out and return to landing page"""
         self.current_user = None
-        self.root.destroy()
+        try:
+            subprocess.Popen([sys.executable, "main.py"])
+            self.root.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", f"Unable to open landing page: {e}")
+            self.root.destroy()
 
     # ------------------- Home Frame -------------------
     def create_home_frame(self):

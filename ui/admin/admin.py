@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import customtkinter as ctk
 from tkinter import messagebox, ttk, filedialog
 import mysql.connector
@@ -175,9 +177,13 @@ class HotelBookingApp:
             self.populate_reports()
 
     def logout(self):
-        """Log out and close the application"""
-        self.current_admin = None
-        self.root.destroy()
+        """Log out and return to landing page"""
+        try:
+            subprocess.Popen([sys.executable, "admin/admin_login.py"])
+            self.root.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", f"Unable to open landing page: {e}")
+            self.root.destroy()
 
     # ------------------- Dashboard Section -------------------
     def create_dashboard_frame(self):
