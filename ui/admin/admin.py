@@ -1177,9 +1177,16 @@ class HotelBookingApp:
 
     # ------------------- Manage Hotels Section -------------------
     def create_hotels_frame(self):
-        """Create the hotels management frame"""
+        """Create the hotels management frame with a scrollable area"""
+        # Main frame for the hotels section
         frame = ctk.CTkFrame(self.content_frame, fg_color="white")
-        header_frame = ctk.CTkFrame(frame, fg_color="white", height=60)
+        
+        # Create a scrollable frame as the main container
+        scrollable_frame = ctk.CTkScrollableFrame(frame, fg_color="white", corner_radius=0)
+        scrollable_frame.pack(fill="both", expand=True, padx=0, pady=0)
+        
+        # Header frame
+        header_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", height=60)
         header_frame.pack(fill="x", padx=30, pady=(30, 10))
         ctk.CTkLabel(header_frame, text="Manage Hotels", font=("Arial", 28, "bold"), text_color="#2C3E50").pack(side="left")
         action_frame = ctk.CTkFrame(header_frame, fg_color="white")
@@ -1191,7 +1198,8 @@ class HotelBookingApp:
         self.hotels_search_entry.pack(side="left", padx=(10, 0))
         ctk.CTkButton(search_frame, text="🔍", font=("Arial", 12, "bold"), fg_color="#E9ECEF", text_color="#343A40", hover_color="#DEE2E6", width=35, height=35, corner_radius=0, command=self.search_hotels).pack(side="right")
 
-        form_frame = ctk.CTkFrame(frame, fg_color="white", border_width=1, border_color="#DEE2E6", corner_radius=10)
+        # Form frame
+        form_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", border_width=1, border_color="#DEE2E6", corner_radius=10)
         form_frame.pack(fill="x", padx=30, pady=(0, 20))
         form_header = ctk.CTkFrame(form_frame, fg_color="#E9ECEF", height=50, corner_radius=0)
         form_header.pack(fill="x")
@@ -1208,9 +1216,9 @@ class HotelBookingApp:
         self.hotels_location_entry = ctk.CTkEntry(form_fields, height=35, placeholder_text="Enter location")
         self.hotels_location_entry.grid(row=3, column=0, sticky="ew", padx=(0, 10), pady=(0, 15))
         ctk.CTkLabel(form_fields, text="Description", font=("Arial", 12), anchor="w").grid(row=4, column=0, sticky="ew", padx=(0, 10), pady=(0, 5))
-        self.hotels_description_entry = ctk.CTkTextbox(form_fields, height=100, width=300, corner_radius=8)  # Changed to Textbox for longer descriptions
+        self.hotels_description_entry = ctk.CTkTextbox(form_fields, height=100, width=300, corner_radius=8)
         self.hotels_description_entry.grid(row=5, column=0, sticky="ew", padx=(0, 10), pady=(0, 15))
-        ctk.CTkLabel(form_fields, text="Star Rating *", font=("Arial", 12), anchor="w").grid(row=6, column=0, sticky="ew", padx=(0, 10), pady=(0, 5))
+        ctk.CTkLabel(form_fields, text="Star-rating *", font=("Arial", 12), anchor="w").grid(row=6, column=0, sticky="ew", padx=(0, 10), pady=(0, 5))
         self.hotels_star_rating_var = ctk.StringVar(value="3")
         star_frame = ctk.CTkFrame(form_fields, fg_color="transparent")
         star_frame.grid(row=7, column=0, sticky="ew", padx=(0, 10), pady=(0, 15))
@@ -1249,15 +1257,16 @@ class HotelBookingApp:
         buttons_frame.grid(row=8, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         button_container = ctk.CTkFrame(buttons_frame, fg_color="transparent")
         button_container.grid(row=0, column=1, columnspan=2)
-        self.hotels_create_btn = ctk.CTkButton(button_container, text="Create Hotel", font=("Arial", 13, "bold"), fg_color="#28A745", hover_color="#218838", command=self.create_hotel, width=140, height=40, corner_radius=8)
+        self.hotels_create_btn = ctk.CTkButton(button_container, text="Create Hotel", font=("Arial", 13, "bold"), fg_color="#CAA745", hover_color="#218838", command=self.create_hotel, width=140, height=40, corner_radius=8)
         self.hotels_update_btn = ctk.CTkButton(button_container, text="Update Hotel", font=("Arial", 13, "bold"), fg_color="#2C3E50", hover_color="#1E4D88", command=self.update_hotel, width=140, height=40, corner_radius=8, state="disabled")
         self.hotels_delete_btn = ctk.CTkButton(button_container, text="Delete Hotel", font=("Arial", 13, "bold"), fg_color="#DC3545", hover_color="#C82333", command=self.delete_hotel, width=140, height=40, corner_radius=8, state="disabled")
         self.hotels_clear_btn = ctk.CTkButton(button_container, text="Clear Form", font=("Arial", 13, "bold"), fg_color="#6C757D", hover_color="#5A6268", command=self.clear_hotel_form, width=140, height=40, corner_radius=8)
         self.hotels_create_btn.grid(row=0, column=0, padx=(0, 10))
         self.hotels_clear_btn.grid(row=0, column=1)
 
-        table_frame = ctk.CTkFrame(frame, fg_color="white", border_width=1, border_color="#DEE2E6", corner_radius=10)
-        table_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
+        # Table frame
+        table_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", border_width=1, border_color="#DEE2E6", corner_radius=10)
+        table_frame.pack(fill="both", padx=30, pady=(0, 20))
         table_header = ctk.CTkFrame(table_frame, fg_color="#E9ECEF", height=50, corner_radius=0)
         table_header.pack(fill="x")
         ctk.CTkLabel(table_header, text="Hotel List", font=("Arial", 16, "bold"), text_color="#2C3E50").pack(side="left", padx=20, pady=10)
@@ -1279,7 +1288,8 @@ class HotelBookingApp:
         self.hotels_table.pack(expand=True, fill='both')
         self.hotels_table.bind('<<TreeviewSelect>>', self.show_hotel_details)
 
-        self.hotels_details_frame = ctk.CTkFrame(frame, fg_color="white", border_width=1, border_color="#DEE2E6", corner_radius=10)
+        # Details frame
+        self.hotels_details_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", border_width=1, border_color="#DEE2E6", corner_radius=10)
         details_header = ctk.CTkFrame(self.hotels_details_frame, fg_color="#E9ECEF", height=50, corner_radius=0)
         details_header.pack(fill="x")
         self.hotels_details_hotel_id = ctk.CTkLabel(details_header, text="Hotel #", font=("Arial", 16, "bold"), text_color="#2C3E50")
@@ -1322,6 +1332,7 @@ class HotelBookingApp:
         rooms_scroll_y.pack(side='right', fill='y')
         rooms_scroll_x.pack(side='bottom', fill='x')
         self.hotels_rooms_table.pack(fill="x")
+
         return frame
 
     def load_hotels(self):
@@ -1520,7 +1531,8 @@ class HotelBookingApp:
             return
         name = self.hotels_name_entry.get().strip()
         location = self.hotels_location_entry.get().strip()
-        description = self.hotels_description_entry.get().strip()
+        description = self.hotels_description_entry.get("1.0", "end-1c").strip()
+        star_rating = int(self.hotels_star_rating_var.get())
         image_path = self.hotel_image_path
         if not name or not location:
             messagebox.showwarning("Input Error", "Hotel name and location are required")
@@ -1528,6 +1540,7 @@ class HotelBookingApp:
         try:
             connection = connect_db()
             cursor = connection.cursor()
+            # Check for duplicate hotel name and location
             cursor.execute(
                 """
                 SELECT Hotel_ID FROM Hotel 
@@ -1538,26 +1551,32 @@ class HotelBookingApp:
             if cursor.fetchone():
                 messagebox.showwarning("Input Error", "Another hotel with this name and location already exists")
                 return
-            if image_path:
-                with open(image_path, 'rb') as file:
-                    image_data = file.read()
-                cursor.execute(
-                    """
-                    UPDATE Hotel
-                    SET Hotel_Name = %s, Location = %s, Description = %s, Image = %s
-                    WHERE Hotel_ID = %s
-                    """,
-                    (name, location, description or None, image_data, self.selected_hotel['Hotel_ID'])
-                )
+            # Handle image update
+            image_destination = None
+            if image_path and image_path != self.selected_hotel['image_path']:
+                image_destination = self.save_hotel_image()
+                if not image_destination:
+                    messagebox.showwarning("Image Error", "Failed to save hotel image")
+                    return
             else:
-                cursor.execute(
-                    """
-                    UPDATE Hotel
-                    SET Hotel_Name = %s, Location = %s, Description = %s
-                    WHERE Hotel_ID = %s
-                    """,
-                    (name, location, description or None, self.selected_hotel['Hotel_ID'])
-                )
+                image_destination = self.selected_hotel['image_path']
+            # Update hotel details
+            cursor.execute(
+                """
+                UPDATE Hotel
+                SET Hotel_Name = %s, Location = %s, Description = %s, Star_Rating = %s, Image_Path = %s
+                WHERE Hotel_ID = %s
+                """,
+                (name, location, description or None, star_rating, image_destination, self.selected_hotel['Hotel_ID'])
+            )
+            # Update amenities
+            cursor.execute("DELETE FROM Hotel_Amenities WHERE Hotel_ID = %s", (self.selected_hotel['Hotel_ID'],))
+            for amenity_id, var in self.hotels_amenity_vars.items():
+                if var.get():
+                    cursor.execute(
+                        "INSERT INTO Hotel_Amenities (Hotel_ID, Amenity_ID) VALUES (%s, %s)",
+                        (self.selected_hotel['Hotel_ID'], amenity_id)
+                    )
             connection.commit()
             messagebox.showinfo("Success", "Hotel updated successfully")
             self.selected_hotel = self.load_hotel_details(self.selected_hotel['Hotel_ID'])
@@ -1576,14 +1595,28 @@ class HotelBookingApp:
         if not self.selected_hotel:
             messagebox.showwarning("Selection Error", "No hotel selected")
             return
-        confirmed = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete the hotel {self.selected_hotel['Hotel_Name']}?\n\nThis will also delete all associated rooms and bookings.\nThis action cannot be undone.")
+        confirmed = messagebox.askyesno(
+            "Confirm Deletion",
+            f"Are you sure you want to delete the hotel {self.selected_hotel['hotel_name']}?\n\nThis will also delete all associated rooms and bookings.\nThis action cannot be undone."
+        )
         if not confirmed:
             return
         try:
             connection = connect_db()
             cursor = connection.cursor()
-            cursor.execute("DELETE FROM Booking WHERE Room_ID IN (SELECT Room_ID FROM Room WHERE Hotel_ID = %s)", (self.selected_hotel['Hotel_ID'],))
-            cursor.execute("DELETE FROM Room WHERE Hotel_ID = %s", (self.selected_hotel['Hotel_ID'],))
+            # Delete associated bookings
+            cursor.execute(
+                """
+                DELETE FROM Booking 
+                WHERE Room_ID IN (SELECT Category_ID FROM RoomCategory WHERE Hotel_ID = %s)
+                """,
+                (self.selected_hotel['Hotel_ID'],)
+            )
+            # Delete associated rooms
+            cursor.execute("DELETE FROM RoomCategory WHERE Hotel_ID = %s", (self.selected_hotel['Hotel_ID'],))
+            # Delete hotel amenities
+            cursor.execute("DELETE FROM Hotel_Amenities WHERE Hotel_ID = %s", (self.selected_hotel['Hotel_ID'],))
+            # Delete the hotel
             cursor.execute("DELETE FROM Hotel WHERE Hotel_ID = %s", (self.selected_hotel['Hotel_ID'],))
             connection.commit()
             messagebox.showinfo("Success", "Hotel deleted successfully")
@@ -1682,7 +1715,14 @@ class HotelBookingApp:
         
         # Display description and star rating
         star_rating_display = "★" * self.selected_hotel['star_rating']
-        self.hotels_details_description.configure(text=f"{self.selected_hotel['description'] if self.selected_hotel['description'] else 'No description available'}\nRating: {star_rating_display}")
+        description_text = f"{self.selected_hotel['description'] if self.selected_hotel['description'] else 'No description available'}\nRating: {star_rating_display}"
+        
+        # Display amenities if available
+        if 'amenities' in self.selected_hotel and self.selected_hotel['amenities']:
+            amenities_text = ", ".join([f"{a['Amenity_Icon']} {a['Amenity_Name']}" for a in self.selected_hotel['amenities']])
+            description_text += f"\nAmenities: {amenities_text}"
+        
+        self.hotels_details_description.configure(text=description_text)
         
         # Display image if available
         if self.selected_hotel['image_path']:
@@ -1716,12 +1756,6 @@ class HotelBookingApp:
                     f"${room['Price_per_Night']}",
                     room['Availability_status']
                 ), tags=(room['Availability_status'].lower(),))
-        
-        # Display amenities if available
-        if 'amenities' in self.selected_hotel and self.selected_hotel['amenities']:
-            amenities_text = ", ".join([f"{a['Amenity_Icon']} {a['Amenity_Name']}" for a in self.selected_hotel['amenities']])
-            current_text = self.hotels_details_description.cget("text")
-            self.hotels_details_description.configure(text=f"{current_text}\nAmenities: {amenities_text}")
     def load_hotel_details(self, hotel_id):
         """Load detailed information for a specific hotel"""
         connection = connect_db()
@@ -1774,7 +1808,7 @@ class HotelBookingApp:
                     (hotel_id,)
                 )
                 hotel['amenities'] = cursor.fetchall()
-                
+            
             return hotel
         except mysql.connector.Error as err:
             print(f"Error loading hotel details: {err}")
@@ -1799,11 +1833,14 @@ class HotelBookingApp:
         """Clear the hotel form fields"""
         self.hotels_name_entry.delete(0, 'end')
         self.hotels_location_entry.delete(0, 'end')
-        self.hotels_description_entry.delete(0, 'end')
+        self.hotels_description_entry.delete("1.0", "end-1c")  # Fixed: Use "1.0" to "end-1c" for CTkTextbox
         self.hotels_image_entry.configure(state="normal")
         self.hotels_image_entry.delete(0, 'end')
         self.hotels_image_entry.configure(state="readonly")
         self.hotel_image_path = None
+        self.hotels_star_rating_var.set("3")  # Reset star rating to default
+        for amenity_id, var in self.hotels_amenity_vars.items():
+            var.set(0)  # Reset all amenities
         self.hotels_create_btn.grid(row=0, column=0, padx=(0, 10))
         self.hotels_clear_btn.grid(row=0, column=1)
         self.hotels_update_btn.grid_forget()
