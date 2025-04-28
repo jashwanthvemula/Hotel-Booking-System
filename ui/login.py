@@ -125,12 +125,18 @@ def login_user():
         connection = connect_db()
         cursor = connection.cursor(dictionary=True)
         cursor.execute(
-            "SELECT user_id, first_name, last_name FROM Users WHERE email = %s AND password = %s",
+            "SELECT user_id, first_name, last_name, is_active FROM Users WHERE email = %s AND password = %s",
             (email, hashed_password)
         )
         user = cursor.fetchone()
 
         if user:
+            # Check if user is active
+            if not user.get('is_active', 1):  # Default to active if column doesn't exist yet
+                messagebox.showerror("Account Deactivated", 
+                    "Your account has been deactivated. Please contact support for assistance.")
+                return
+                
             messagebox.showinfo("Success", f"Welcome {user['first_name']} {user['last_name']}!")
             
             # Remember the login if checkbox is checked

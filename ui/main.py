@@ -24,6 +24,12 @@ def setup_database():
         database_name = "hotel_book"
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name}")
         cursor.execute(f"USE {database_name}")
+
+#         cursor.execute("""
+# ALTER TABLE Users
+# ADD COLUMN is_active TINYINT(1) DEFAULT 1 NOT NULL;
+
+# UPDATE Users SET is_active = 1 WHERE is_active IS NULL;""") 
         
         # Create Users table with security question fields
         cursor.execute("""
